@@ -27,6 +27,10 @@ import ai_trader
 import market_filters
 import position_manager
 import runtime_guard
+import execution_guard
+import performance_guard
+import model_monitor
+import news_filter
 
 _last_evaluated_entry_bar = None
 _last_console_status = None
@@ -173,6 +177,12 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
     if blackout:
         print_status(f"Entry dijeda: {blackout_reason}")
         return current_tickets
+    calendar_blackout, calendar_reason = news_filter.is_blackout()
+    if calendar_blackout:
+        print_status(f"Entry dijeda kalender ekonomi: {calendar_reason}")
+        return current_tickets
+    if calendar_reason.startswith("calendar API gagal"):
+        trade_logger.log_system_event("news_calendar_error", calendar_reason)
     try:
         closed_df = pd.DataFrame(trade_logger.load_closed_trades()).tail(500)
     except Exception:
@@ -180,6 +190,15 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
     guard_allowed, guard_reason = market_filters.recent_trade_guard(closed_df)
     if not guard_allowed:
         print_status(f"Entry dijeda: {guard_reason}")
+        return current_tickets
+    performance_ok, performance_reason, _ = performance_guard.evaluate(closed_df)
+    if not performance_ok:
+        print_status(f"Entry dihentikan kill-switch: {performance_reason}")
+        trade_logger.log_system_event("performance_kill_switch", performance_reason)
+        return current_tickets
+    circuit_ok, circuit_reason = runtime_guard.order_circuit_status()
+    if not circuit_ok:
+        print_status(f"Entry dijeda: {circuit_reason}")
         return current_tickets
 
     volatility_ok, volatility_reason = market_filters.check_volatility(df_m15)
@@ -212,7 +231,13 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
     if signal_result.signal == "none":
         return current_tickets
 
-    model_score = ai_trader.predict_score(df_h1, df_m15, signal_result, spread_points=spread_points)
+    model_healthy, model_health_reason, _ = model_monitor.evaluate()
+    model_score = None
+    if model_healthy:
+        model_score = ai_trader.predict_score(df_h1, df_m15, signal_result, spread_points=spread_points)
+    else:
+        print_status(f"Model AI dinonaktifkan sementara: {model_health_reason}")
+        trade_logger.log_system_event("ai_model_drift", model_health_reason)
     if model_score is not None:
         print(f"[{datetime.now()}] AI model probability trade-profit: {model_score:.2f}")
     else:
@@ -281,6 +306,13 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
     # 5. Hitung risiko & kirim order
     real_entry_price = ask_price if signal_result.signal == "buy" else bid_price
 
+    direction_ok, direction_reason = risk_manager.can_open_direction(
+        open_positions, signal_result.signal, real_entry_price, signal_result.atr_value
+    )
+    if not direction_ok:
+        print_status(f"Entry ditolak exposure: {direction_reason}")
+        return current_tickets
+
     if not risk_manager.can_open_new_position(len(open_positions)):
         print(f"[{datetime.now()}] Slot posisi penuh ({len(open_positions)}/{config.MAX_OPEN_POSITIONS}), lewati.")
         return current_tickets
@@ -336,6 +368,21 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
         )
         return current_tickets
 
+    broker_ok, broker_reason = execution_guard.validate_market_order(
+        symbol=config.SYMBOL,
+        signal=signal_result.signal,
+        lot_size=order_plan.lot_size,
+        entry_price=real_entry_price,
+        sl_price=order_plan.sl_price,
+        tp_price=order_plan.tp_price,
+        symbol_info=symbol_info,
+        account=account,
+    )
+    if not broker_ok:
+        print_status(f"Order ditolak preflight broker: {broker_reason}")
+        trade_logger.log_system_event("broker_preflight_reject", broker_reason)
+        return current_tickets
+
     result = mt5_connector.send_market_order(
         symbol=config.SYMBOL,
         order_type=signal_result.signal,
@@ -345,6 +392,7 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
     )
 
     if result["success"]:
+        runtime_guard.record_order_result(True)
         print(f"[{datetime.now()}] Order berhasil: {result}")
         entry_time = datetime.now().isoformat(timespec="seconds")
         features = ai_trader.extract_features(df_h1, df_m15, signal_result, spread_points=spread_points)
@@ -412,6 +460,7 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
         # current_tickets is tracked by open position ticket numbers from MT5.
         # The return value of order_send is an order request id, not the position ticket.
     else:
+        runtime_guard.record_order_result(False)
         print(f"[{datetime.now()}] Order GAGAL: {result['error']}")
         trade_logger.log_system_event("order_failed", str(result["error"]))
         notifier.notify_error(f"Order gagal: {result['error']}")

@@ -152,6 +152,20 @@ def can_open_new_position(current_open_positions: int) -> bool:
     return current_open_positions < config.MAX_OPEN_POSITIONS
 
 
+def can_open_direction(open_positions: list, signal: str, entry_price: float, atr: float) -> tuple[bool, str]:
+    """Batasi posisi searah, jarak entry, dan penambahan saat posisi sedang rugi."""
+    desired_type = 0 if signal == "buy" else 1
+    same_direction = [pos for pos in open_positions if int(pos.type) == desired_type]
+    if len(same_direction) >= config.MAX_POSITIONS_PER_DIRECTION:
+        return False, f"posisi {signal} sudah {len(same_direction)}/{config.MAX_POSITIONS_PER_DIRECTION}"
+    if not config.ALLOW_ADD_TO_LOSING_POSITION and any(float(getattr(pos, "profit", 0.0)) < 0 for pos in same_direction):
+        return False, f"posisi {signal} sebelumnya masih floating loss"
+    minimum_distance = max(0.0, atr * config.MIN_ENTRY_DISTANCE_ATR)
+    if any(abs(entry_price - float(pos.price_open)) < minimum_distance for pos in same_direction):
+        return False, f"jarak entry {signal} kurang dari {config.MIN_ENTRY_DISTANCE_ATR:.2f} ATR"
+    return True, ""
+
+
 def calculate_total_open_risk_percent(open_positions: list, equity: float,
                                        tick_value: float, tick_size: float) -> float:
     """

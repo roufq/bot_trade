@@ -1,0 +1,77 @@
+from datetime import datetime
+from types import SimpleNamespace
+import sys
+import tempfile
+from pathlib import Path
+import unittest
+from unittest.mock import patch
+
+import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+import execution_guard
+import performance_guard
+import risk_manager
+import runtime_guard
+import news_filter
+
+
+class ExposureTests(unittest.TestCase):
+    def test_rejects_averaging_into_losing_position(self):
+        pos = SimpleNamespace(type=0, price_open=100.0, profit=-1.0)
+        allowed, reason = risk_manager.can_open_direction([pos], "buy", 101.0, 1.0)
+        self.assertFalse(allowed)
+        self.assertIn("floating loss", reason)
+
+
+class ExecutionGuardTests(unittest.TestCase):
+    def test_rejects_insufficient_remaining_margin(self):
+        with patch.object(execution_guard.mt5_connector, "get_tick_info", return_value={"time": 1000}), patch.object(
+            execution_guard.time, "time", return_value=1001
+        ), patch.object(execution_guard.mt5_connector, "calculate_order_margin", return_value=60.0):
+            allowed, reason = execution_guard.validate_market_order(
+                "X", "buy", 0.01, 100, 99, 102,
+                {"point": .01, "trade_tick_size": .01, "trade_stops_level": 10, "volume_min": .01, "volume_max": 10},
+                {"margin_free": 100},
+            )
+        self.assertFalse(allowed)
+        self.assertIn("margin", reason)
+
+
+class PerformanceGuardTests(unittest.TestCase):
+    def test_stops_negative_rolling_expectancy(self):
+        df = pd.DataFrame({"profit": [-1.0] * 10, "risk_amount": [1.0] * 10})
+        allowed, reason, _ = performance_guard.evaluate(df)
+        self.assertFalse(allowed)
+        self.assertTrue("profit factor" in reason or "expectancy" in reason)
+
+
+class OrderCircuitTests(unittest.TestCase):
+    def test_three_errors_open_circuit(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = str(Path(tmpdir) / "state.json")
+            now = datetime(2026, 7, 21, 10, 0)
+            with patch.object(runtime_guard.config, "RUNTIME_STATE_FILE", state_path):
+                for _ in range(3):
+                    runtime_guard.record_order_result(False, now)
+                self.assertFalse(runtime_guard.order_circuit_status(now)[0])
+
+
+class NewsFilterTests(unittest.TestCase):
+    def test_high_impact_usd_event_blocks_entry(self):
+        events = [{"time": "2026-07-21T10:00:00+07:00", "currency": "USD", "impact": "high", "title": "CPI"}]
+        blocked, reason = news_filter.event_blackout(events, datetime(2026, 7, 21, 9, 50))
+        self.assertTrue(blocked)
+        self.assertIn("CPI", reason)
+
+    def test_fmp_country_and_event_fields_are_supported(self):
+        events = [{"date": "2026-07-21T03:00:00Z", "country": "US", "impact": "High", "event": "NFP"}]
+        local_event = news_filter._parse_time("2026-07-21T03:00:00Z")
+        blocked, reason = news_filter.event_blackout(events, local_event)
+        self.assertTrue(blocked)
+        self.assertIn("NFP", reason)
+
+
+if __name__ == "__main__":
+    unittest.main()

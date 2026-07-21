@@ -8,3 +8,4 @@ __pycache__/
 bot.lock
 runtime_state.json
 runtime_state.json.tmp
+model_registry/

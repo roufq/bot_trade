@@ -143,7 +143,34 @@ $env:TRADING_NEWS_BLACKOUT_WINDOWS="13:25-13:40,19:55-20:15"
 ```
 
 Jam tersebut mengikuti waktu lokal komputer. Daftar harus diperbarui sesuai
-jadwal berita; project tidak mengunduh kalender ekonomi otomatis.
+jadwal berita; secara default project tidak mengunduh kalender otomatis.
+
+Kalender otomatis bersifat opsional. Isi URL endpoint JSON melalui:
+
+```powershell
+$env:TRADING_NEWS_CALENDAR_URL="https://endpoint-anda/events"
+```
+
+Contoh menggunakan Financial Modeling Prep (FMP):
+
+```powershell
+$env:TRADING_NEWS_CALENDAR_URL="https://financialmodelingprep.com/stable/economic-calendar?apikey=API_KEY_ANDA"
+```
+
+Simpan API key sebagai environment variable dan jangan commit URL berisi key.
+Adapter mendukung field FMP `date`, `country`, `impact`, dan `event`; waktu FMP
+yang tidak memiliki offset diperlakukan sebagai UTC lalu dikonversi ke waktu
+lokal komputer.
+
+Endpoint harus mengembalikan list event atau object `{ "events": [...] }`.
+Setiap event menggunakan field `time`, `currency`, `impact`, dan `title`.
+Contoh:
+
+```json
+{"time":"2026-07-21T19:30:00+07:00","currency":"USD","impact":"high","title":"CPI"}
+```
+
+Jika endpoint belum dikonfigurasi atau gagal, blackout manual tetap digunakan.
 
 ## Data lokal dan AI
 
@@ -170,11 +197,24 @@ minimal 50 closed trade yang berisi variasi profit dan loss.
 Jika audit menghasilkan `VALID`, jalankan training:
 
 ```powershell
-python -c "import ai_trader; ai_trader.train_model()"
+python retrain_model.py
 ```
 
-Model akan disimpan sebagai `ml_model.joblib`. Model dan histori dari akun atau
-broker lain tidak otomatis cocok dengan kondisi broker Anda.
+Kandidat hanya dipromosikan jika memenuhi batas AUC dan Brier score. Versi,
+metadata, dan model aktif disimpan di `model_registry/`. Lihat versi:
+
+```powershell
+python model_registry.py
+```
+
+Rollback bila diperlukan:
+
+```powershell
+python model_registry.py --rollback YYYYMMDD_HHMMSS
+```
+
+Model aktif disimpan sebagai `ml_model.joblib`. Model dan histori dari akun
+atau broker lain tidak otomatis cocok dengan kondisi broker Anda.
 
 Lihat statistik berjalan:
 
@@ -232,6 +272,11 @@ Jika `False`, ikuti [TELEGRAM_SETUP.md](TELEGRAM_SETUP.md).
 Baca alasan pada terminal dan `system_log.csv`. Penolakan dapat berasal dari
 sinyal, spread/kondisi pasar, threshold learning, batas posisi, drawdown,
 risiko minimum lot, atau respons broker.
+
+Proteksi tahap produksi juga dapat menolak entry ketika posisi searah sedang
+rugi, jarak antar-entry terlalu dekat, rolling profit factor/expectancy buruk,
+loss aktual melampaui planned risk, tick stale, margin tidak cukup, order check
+broker gagal, order-error circuit breaker aktif, atau model terdeteksi drift.
 
 ### Bot berhenti pada drawdown
 

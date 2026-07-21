@@ -2,7 +2,7 @@
 
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import config
 
@@ -88,4 +88,38 @@ def get_tracked_tickets() -> set[int]:
 def save_tracked_tickets(tickets: set[int]) -> None:
     state = load_state()
     state["open_tickets"] = sorted(int(value) for value in tickets)
+    save_state(state)
+
+
+def order_circuit_status(now: datetime | None = None) -> tuple[bool, str]:
+    now = now or datetime.now()
+    state = load_state()
+    blocked_text = state.get("order_blocked_until", "")
+    if not blocked_text:
+        return True, ""
+    try:
+        blocked_until = datetime.fromisoformat(blocked_text)
+    except ValueError:
+        return True, ""
+    if now < blocked_until:
+        return False, f"order-error circuit breaker sampai {blocked_until:%H:%M:%S}"
+    state["order_errors"] = 0
+    state["order_blocked_until"] = ""
+    save_state(state)
+    return True, ""
+
+
+def record_order_result(success: bool, now: datetime | None = None) -> None:
+    now = now or datetime.now()
+    state = load_state()
+    if success:
+        state["order_errors"] = 0
+        state["order_blocked_until"] = ""
+    else:
+        errors = int(state.get("order_errors", 0)) + 1
+        state["order_errors"] = errors
+        if errors >= config.MAX_CONSECUTIVE_ORDER_ERRORS:
+            state["order_blocked_until"] = (
+                now + timedelta(minutes=config.ORDER_ERROR_COOLDOWN_MINUTES)
+            ).isoformat(timespec="seconds")
     save_state(state)

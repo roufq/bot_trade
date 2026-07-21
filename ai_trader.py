@@ -338,5 +338,17 @@ def train_model() -> None:
         average_prediction=("probability", "mean"),
     ))
 
-    joblib.dump(model_to_save, config.MODEL_FILE)
-    print(f"Model tersimpan ke {config.MODEL_FILE}")
+    import model_registry
+    metrics = {
+        "auc": float(roc_auc_score(y_test, y_proba)),
+        "brier": float(brier_score_loss(y_test, y_proba)),
+        "accuracy": float(accuracy_score(y_test, y_pred)),
+        "training_rows": int(len(train)),
+        "test_rows": int(len(test)),
+        "features": FEATURE_COLUMNS,
+    }
+    promoted, detail = model_registry.promote(model_to_save, metrics)
+    if promoted:
+        print(f"Model dipromosikan sebagai versi {detail} ke {config.MODEL_FILE}")
+    else:
+        print(f"Model kandidat ditolak: {detail}")

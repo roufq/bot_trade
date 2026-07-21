@@ -56,7 +56,9 @@ berhenti.
 
 Proteksi runtime mencakup satu instance, spread/volatilitas, blackout berita
 manual, cooldown, loss streak, drawdown harian/mingguan/equity peak,
-break-even, trailing stop, dan rekonsiliasi ticket setelah restart.
+break-even, trailing stop, directional exposure, larangan averaging-down,
+broker/margin preflight, rolling performance kill-switch, model drift, dan
+rekonsiliasi ticket setelah restart.
 
 ## Struktur file
 
@@ -77,6 +79,12 @@ break-even, trailing stop, dan rekonsiliasi ticket setelah restart.
 | `position_manager.py` | Break-even dan trailing stop |
 | `runtime_guard.py` | Single-instance lock dan state restart |
 | `performance_report.py` | Statistik performa, spread, dan slippage |
+| `execution_guard.py` | Validasi tick, stop level, volume, dan margin broker |
+| `performance_guard.py` | Kill-switch profit factor, expectancy, dan deviasi loss |
+| `news_filter.py` | Adapter kalender ekonomi opsional dengan cache |
+| `model_monitor.py` | Deteksi penurunan AUC/Brier model aktif |
+| `model_registry.py` | Versioning, promosi, dan rollback model |
+| `retrain_model.py` | Audit dan retraining aman |
 
 ## Validasi data AI
 

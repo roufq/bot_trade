@@ -156,6 +156,19 @@ def get_current_prices(symbol: str) -> Optional[tuple[float, float]]:
     return tick.ask, tick.bid
 
 
+def get_tick_info(symbol: str) -> Optional[dict]:
+    _require_mt5()
+    tick = mt5.symbol_info_tick(symbol)
+    return tick._asdict() if tick is not None else None
+
+
+def calculate_order_margin(symbol: str, order_type: str, lot_size: float, price: float) -> Optional[float]:
+    _require_mt5()
+    mt5_type = mt5.ORDER_TYPE_BUY if order_type == "buy" else mt5.ORDER_TYPE_SELL
+    margin = mt5.order_calc_margin(mt5_type, symbol, lot_size, price)
+    return float(margin) if margin is not None else None
+
+
 def get_open_positions(symbol: str) -> list:
     """Mengambil semua posisi terbuka untuk simbol tertentu."""
     _require_mt5()
@@ -346,6 +359,16 @@ def send_market_order(symbol: str, order_type: str, lot_size: float,
             "type_time": mt5.ORDER_TIME_GTC,
             "type_filling": type_filling,
         }
+
+        check = mt5.order_check(request)
+        if check is None:
+            last_error = f"order_check gagal: {mt5.last_error()}"
+            continue
+        if int(getattr(check, "retcode", -1)) != 0:
+            last_error = f"order_check retcode={check.retcode}, comment={getattr(check, 'comment', '')}"
+            if int(getattr(check, "retcode", -1)) != 10030:
+                break
+            continue
 
         result = mt5.order_send(request)
 
