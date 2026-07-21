@@ -1,170 +1,216 @@
-# Instalasi dan Setup Bot Trading MT5 XAUUSD
+# Instalasi Bot Trading MT5 XAUUSD dari GitHub
 
-Dokumen ini menjelaskan cara memasang, mengkonfigurasi, dan menjalankan bot trading MT5 untuk XAUUSD di Windows.
+Panduan ini ditujukan untuk Windows 10/11. Bot berkomunikasi langsung dengan
+MetaTrader 5 desktop dan harus diuji pada akun demo sebelum digunakan pada akun
+live.
 
----
+## Peringatan
+
+- Tidak ada jaminan profit atau win rate tertentu.
+- Gunakan akun demo minimal 1–3 bulan dan evaluasi drawdown serta biaya broker.
+- Jangan commit token Telegram, password MT5, file `.env`, log CSV, atau model
+  ML ke GitHub.
+- Jalankan hanya satu instance `main.py`.
 
 ## Prasyarat
 
 1. Windows 10/11.
-2. MetaTrader 5 desktop terinstal dan berfungsi.
-3. MetaTrader 5 sudah login ke akun demo atau live.
-4. Tombol **Algo Trading** aktif di toolbar MT5.
-5. Python 3.14 (direkomendasikan) atau Python 3.11.
-6. Akses internet untuk notifikasi Telegram dan koneksi broker.
+2. Git.
+3. Python 3.11 direkomendasikan untuk kompatibilitas package MT5.
+4. MetaTrader 5 desktop sudah terpasang dan login ke akun demo.
+5. Tombol **Algo Trading** pada MT5 aktif.
+6. Symbol broker untuk emas tersedia, misalnya `XAUUSD.vx` atau `XAUUSD`.
 
----
+Periksa instalasi:
 
-## Instalasi Python dan Virtual Environment
+```powershell
+git --version
+python --version
+```
 
-1. Buka PowerShell di folder project:
+## Clone repository
 
-   ```powershell
-   cd C:\trading
-   ```
+```powershell
+cd C:\
+git clone https://github.com/roufq/bot_trade.git trading
+cd C:\trading
+```
 
-2. Buat virtual environment:
+Jika folder `C:\trading` sudah ada, jangan menjalankan clone di atasnya. Masuk
+ke folder tersebut dan gunakan `git pull` hanya jika perubahan lokal sudah
+diamankan.
 
-   ```powershell
-   python -m venv .venv
-   ```
+## Virtual environment dan dependency
 
-3. Aktifkan virtual environment:
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
 
-   ```powershell
-   .\.venv\Scripts\Activate.ps1
-   ```
+Jika PowerShell menolak aktivasi script:
 
-4. Perbarui `pip` dan instal dependensi:
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
 
-   ```powershell
-   python -m pip install --upgrade pip
-   pip install -r requirements.txt
-   ```
+Alternatif tanpa aktivasi:
 
----
+```powershell
+.\.venv\Scripts\python.exe main.py
+```
 
-## Konfigurasi `config.py`
+Pastikan interpreter project digunakan:
 
-Buka file `config.py` dan sesuaikan parameter berikut:
+```powershell
+python -c "import sys; print(sys.executable)"
+```
 
-- `MT5_LOGIN`: nomor akun MT5 Anda.
-- `MT5_PASSWORD`: password akun MT5.
-- `MT5_SERVER`: nama server broker MT5.
-- `MT5_PATH`: opsional, path ke `terminal64.exe` jika perlu eksplisit.
-- `SYMBOL`: instrumen trading, default `XAUUSD.vx`.
-- `TRADING_HOUR_START` dan `TRADING_HOUR_END`: jam trading aktif.
-- `RISK_PERCENT_PER_TRADE`: persentase equity yang dirisikokan setiap trade.
-- `MAX_DAILY_DRAWDOWN_PERCENT`: batas drawdown harian supaya bot berhenti.
-- Environment variable `TRADING_TELEGRAM_BOT_TOKEN` dan
-  `TRADING_TELEGRAM_CHAT_ID`: untuk notifikasi Telegram. Kredensial tidak
-  disimpan di source code.
+Output seharusnya mengarah ke `C:\trading\.venv\Scripts\python.exe`.
 
-> Catatan: jangan commit kredensial akun live jika Anda menggunakan repositori publik.
+## Setup MetaTrader 5
 
-Panduan pembuatan bot, Chat ID, environment variable, pengujian, dan
-troubleshooting Telegram tersedia di `TELEGRAM_SETUP.md`.
+1. Buka MT5 dan login ke akun demo.
+2. Aktifkan **Algo Trading**.
+3. Pastikan symbol emas tampil di Market Watch.
+4. Sesuaikan bagian koneksi dan symbol di `config.py`:
 
----
+```python
+MT5_LOGIN = 0
+MT5_PASSWORD = ""
+MT5_SERVER = ""
+MT5_PATH = ""
+SYMBOL = "XAUUSD.vx"
+```
 
-## Menjalankan Bot
+Jika MT5 sudah login pada akun yang benar, nilai login dapat dibiarkan kosong
+dan connector akan memakai sesi terminal aktif. Jangan commit kredensial akun.
 
-Setelah konfigurasi selesai dan venv aktif, jalankan:
+Uji koneksi:
+
+```powershell
+python test_connection.py
+```
+
+## Setup Telegram
+
+Telegram dikonfigurasi melalui environment variable, bukan dengan menempelkan
+token ke `config.py`:
+
+```powershell
+$env:TRADING_TELEGRAM_BOT_TOKEN="TOKEN_BARU_ANDA"
+$env:TRADING_TELEGRAM_CHAT_ID="CHAT_ID_ANDA"
+```
+
+Periksa dan uji:
+
+```powershell
+python -c "import config; print(config.TELEGRAM_ENABLED)"
+python -c "import notifier; print(notifier.send_telegram_message('Tes notifikasi trading'))"
+```
+
+Panduan lengkap, termasuk konfigurasi permanen dan troubleshooting
+`chat not found`, tersedia di [TELEGRAM_SETUP.md](TELEGRAM_SETUP.md).
+
+## Menjalankan test
+
+```powershell
+python -m unittest discover -s tests -v
+```
+
+Semua test harus lulus sebelum bot dijalankan.
+
+## Menjalankan bot
 
 ```powershell
 python main.py
 ```
 
-Bot akan:
+Bot akan mengambil candle MT5 yang sudah tertutup, mengevaluasi sinyal,
+menghitung risiko, mengirim order, mencatat entry/exit, dan mengirim notifikasi.
+Hentikan secara normal dengan `Ctrl+C`.
 
-- memeriksa saldo dan drawdown harian,
-- memindai sinyal entry berdasarkan strategi multi-timeframe,
-- menghitung ukuran lot, SL, TP,
-- mengirim order market ke MT5,
-- mencatat log trading ke CSV,
-- mengirim notifikasi jika broker atau sistem error.
+## Data lokal dan AI
 
-Hentikan bot dengan `Ctrl+C`.
+File berikut dibuat atau diperbarui secara lokal dan sengaja tidak disimpan di
+GitHub:
 
----
+- `trade_log.csv`
+- `closed_trade_log.csv`
+- `system_log.csv`
+- `backtest_trades.csv`
+- `backtest_equity_curve.csv`
+- `ml_model.joblib`
 
-## Perintah jika `python main.py` menggunakan interpreter yang salah
-
-Jika perintah `python` di terminal Anda masih menunjuk ke interpreter global lain, gunakan path lengkap ke virtualenv:
-
-```powershell
-C:\trading\.venv\Scripts\python.exe main.py
-```
-
----
-
-## Struktur File Utama
-
-- `config.py` - parameter koneksi, strategi, dan manajemen risiko.
-- `mt5_connector.py` - komunikasi dengan MT5 dan eksekusi order.
-- `indicators.py` - perhitungan indikator teknikal (EMA, RSI, ATR).
-- `strategy.py` - logika sinyal entry dengan filter tren dan momentum.
-- `risk_manager.py` - ukuran lot, level SL/TP, batas risiko.
-- `trade_logger.py` - logging trade dan event sistem ke CSV.
-- `notifier.py` - notifikasi Telegram.
-- `learner.py` - logika adaptif berbasis riwayat closed trade.
-- `ai_trader.py` - scaffold ML untuk inferensi dan training.
-- `main.py` - loop utama bot.
-
----
-
-## File Log dan Data
-
-Bot mencatat ke file berikut:
-
-- `trade_log.csv` - data entry trade beserta fitur ML.
-- `closed_trade_log.csv` - data trade yang sudah tertutup untuk learning.
-- `system_log.csv` - event sistem, error, dan keputusan penting.
-
----
-
-## Dependensi
-
-- `MetaTrader5`
-- `pandas`
-- `numpy`
-- `requests`
-- `scikit-learn`
-- `joblib`
-
-Semua dependensi sudah dimasukkan di `requirements.txt`.
-
----
-
-## Tips Penting
-
-- Uji di akun demo selama minimal 1-3 bulan sebelum live.
-- Periksa timezone MT5 dan jam trading di `config.py`.
-- Pastikan `Algo Trading` aktif.
-- Lihat file log jika terjadi error atau order gagal.
-
----
-
-## Menjalankan Training ML (opsional)
-
-Audit kualitas data lebih dulu:
+Karena data tersebut tidak ikut repository, instalasi baru memulai histori AI
+dari nol. Audit data dengan:
 
 ```powershell
 python data_quality.py
 ```
 
-Jika hasilnya `VALID`, latih model:
+Status `INVALID` dengan alasan `baru N trade valid` adalah normal sebelum ada
+minimal 50 closed trade yang berisi variasi profit dan loss.
+
+Jika audit menghasilkan `VALID`, jalankan training:
 
 ```powershell
 python -c "import ai_trader; ai_trader.train_model()"
 ```
 
-Model akan disimpan di `ml_model.joblib`.
+Model akan disimpan sebagai `ml_model.joblib`. Model dan histori dari akun atau
+broker lain tidak otomatis cocok dengan kondisi broker Anda.
 
----
+## Backtest
 
-## Penyesuaian Lanjutan
+Pastikan MT5 aktif dan memiliki data historis, kemudian jalankan:
 
-- Set `AI_FORCE_MODEL_ONLY = True` di `config.py` untuk menolak entry jika model ML belum tersedia.
-- Ubah `AI_MIN_PROBA_ENTRY` untuk menaikkan/menurunkan threshold confidence model.
-- Sesuaikan `RISK_PERCENT_PER_TRADE` dan `MAX_DAILY_DRAWDOWN_PERCENT` untuk gaya manajemen risiko Anda.
+```powershell
+python backtest.py
+```
+
+Hasil backtest bukan jaminan performa masa depan. Periksa spread, komisi,
+slippage, profit factor, dan maximum drawdown sebelum mengambil keputusan.
+
+## Update dari GitHub
+
+Hentikan bot dengan `Ctrl+C`, lalu periksa perubahan lokal:
+
+```powershell
+git status
+git pull
+python -m pip install -r requirements.txt
+python -m unittest discover -s tests -v
+```
+
+Jangan menjalankan `git reset --hard` karena dapat menghapus perubahan lokal.
+
+## Troubleshooting singkat
+
+### `ModuleNotFoundError`
+
+Aktifkan `.venv` atau gunakan interpreter lengkap:
+
+```powershell
+.\.venv\Scripts\python.exe main.py
+```
+
+### Telegram tidak aktif
+
+```powershell
+python -c "import config; print(config.TELEGRAM_ENABLED)"
+```
+
+Jika `False`, ikuti [TELEGRAM_SETUP.md](TELEGRAM_SETUP.md).
+
+### Bot tidak entry
+
+Baca alasan pada terminal dan `system_log.csv`. Penolakan dapat berasal dari
+sinyal, spread/kondisi pasar, threshold learning, batas posisi, drawdown,
+risiko minimum lot, atau respons broker.
+
+### Bot berhenti pada drawdown
+
+Bot menggunakan `MAX_DAILY_DRAWDOWN_PERCENT` di `config.py`. Acuannya adalah
+equity awal hari dan mencakup floating profit/loss.

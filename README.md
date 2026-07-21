@@ -14,29 +14,30 @@ otomatis di MetaTrader 5.
   live, mencakup berbagai kondisi pasar (trending & sideways).
 - Tersedia backtest sederhana, tetapi hasilnya bukan bukti strategi akan profit.
 
-## Instalasi
+## Instalasi cepat
 
-1. Pastikan MT5 desktop sudah terinstall dan bisa login ke akun (demo/live).
-2. Aktifkan tombol **Algo Trading** di toolbar MT5.
-3. Install Python 3.10 atau 3.11 (package `MetaTrader5` belum tentu kompatibel
-   dengan versi Python yang lebih baru).
-4. Buat virtual environment dan install dependency:
+```powershell
+git clone https://github.com/roufq/bot_trade.git trading
+cd trading
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python -m unittest discover -s tests -v
+python main.py
+```
 
-   ```
-   python -m venv venv
-   venv\Scripts\activate          (Windows)
-   pip install -r requirements.txt
-   ```
-
-Panduan lengkap notifikasi tersedia di `TELEGRAM_SETUP.md`.
+Ikuti [INSTALLATION.md](INSTALLATION.md) untuk setup MT5, keamanan kredensial,
+data AI, backtest, update repository, dan troubleshooting. Panduan notifikasi
+tersedia di [TELEGRAM_SETUP.md](TELEGRAM_SETUP.md).
 
 ## Konfigurasi
 
-Buka `config.py` dan isi:
+Buka `config.py` dan sesuaikan:
 
 - `MT5_LOGIN`, `MT5_PASSWORD`, `MT5_SERVER` -- detail akun MT5 Anda.
-- `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` -- lihat instruksi di `notifier.py`
-  untuk cara mendapatkannya lewat @BotFather.
+- `SYMBOL` agar sesuai nama instrumen broker.
+- Token Telegram dan Chat ID disimpan sebagai environment variable, bukan di
+  source code.
 
 Semua parameter risiko (persen risiko per trade, drawdown limit, dll) sudah
 diisi sesuai kesepakatan awal, tapi bisa disesuaikan di file yang sama.
@@ -59,7 +60,7 @@ berhenti.
 | `config.py` | Semua parameter (risiko, strategi, koneksi) |
 | `mt5_connector.py` | Komunikasi ke MT5 (hanya jalan di Windows) |
 | `indicators.py` | Perhitungan EMA, RSI, ATR |
-| `strategy.py` | Logika sinyal entry (bias H1 + entry M15 + filter RSI) |
+| `strategy.py` | Logika sinyal entry sesuai timeframe konfigurasi |
 | `risk_manager.py` | Position sizing, SL/TP, cek drawdown harian |
 | `trade_logger.py` | Logging ke `trade_log.csv` dan `system_log.csv` |
 | `notifier.py` | Notifikasi Telegram |
