@@ -30,6 +30,16 @@ class MarketFilterTests(unittest.TestCase):
             self.assertFalse(market_filters.recent_trade_guard(df, datetime(2026, 7, 21, 10, 1))[0])
             self.assertTrue(market_filters.recent_trade_guard(df, datetime(2026, 7, 21, 10, 4))[0])
 
+    def test_future_server_time_falls_back_to_local_log_time(self):
+        df = pd.DataFrame({
+            "profit": [2.0],
+            "exit_time": ["2026-07-21 13:00:00"],
+            "timestamp": ["2026-07-21 10:00:00"],
+        })
+        with patch.object(market_filters.config, "COOLDOWN_AFTER_WIN_SECONDS", 60):
+            allowed, _ = market_filters.recent_trade_guard(df, datetime(2026, 7, 21, 10, 2))
+        self.assertTrue(allowed)
+
 
 if __name__ == "__main__":
     unittest.main()

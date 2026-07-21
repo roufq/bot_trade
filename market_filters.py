@@ -58,6 +58,12 @@ def recent_trade_guard(df_closed: pd.DataFrame, now: datetime | None = None) -> 
     df = df_closed.copy()
     df["profit"] = pd.to_numeric(df["profit"], errors="coerce")
     df["exit_time"] = pd.to_datetime(df["exit_time"], errors="coerce")
+    if "timestamp" in df.columns:
+        logged_time = pd.to_datetime(df["timestamp"], errors="coerce")
+        # Fallback defensif untuk histori yang memakai waktu server MT5 dan
+        # tampak berada di masa depan dibanding jam lokal bot.
+        future_mask = df["exit_time"] > pd.Timestamp(now) + pd.Timedelta(minutes=1)
+        df.loc[future_mask, "exit_time"] = logged_time[future_mask]
     df = df.dropna(subset=["profit", "exit_time"]).sort_values("exit_time")
     if df.empty:
         return True, ""

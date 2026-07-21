@@ -117,7 +117,9 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
             close_reason = "closed_position_sl"
         elif abs(float(deal["price"]) - float(entry_info.get("tp_price", 0.0))) <= 1e-6:
             close_reason = "closed_position_tp"
-        exit_time = datetime.fromtimestamp(deal["time"]).isoformat(timespec="seconds") if deal.get("time") else datetime.now().isoformat(timespec="seconds")
+        # Timestamp deal MT5 dapat memakai zona waktu server broker. Gunakan
+        # waktu lokal saat terdeteksi untuk cooldown dan urutan learning.
+        exit_time = datetime.now().isoformat(timespec="seconds")
         trade_logger.log_closed_trade(
             order_id=order_id,
             ticket=ticket,
