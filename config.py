@@ -12,10 +12,10 @@ import os
 # =========================================================
 # Isi dengan detail akun demo/live Anda.
 # JANGAN commit file ini ke repo publik jika sudah diisi kredensial live.
-MT5_LOGIN = 0            # nomor akun MT5 Anda, contoh: 12345678
-MT5_PASSWORD = ""        # password akun MT5
-MT5_SERVER = ""          # nama server broker, contoh: "Valetax-Demo"
-MT5_PATH = ""            # opsional, path ke terminal64.exe jika perlu eksplisit
+MT5_LOGIN = int(os.getenv("TRADING_MT5_LOGIN", "0") or 0)
+MT5_PASSWORD = os.getenv("TRADING_MT5_PASSWORD", "")
+MT5_SERVER = os.getenv("TRADING_MT5_SERVER", "")
+MT5_PATH = os.getenv("TRADING_MT5_PATH", "")
 
 # =========================================================
 # INSTRUMEN & TIMEFRAME
@@ -46,6 +46,12 @@ MAX_ACTUAL_RISK_PERCENT_PER_TRADE = 1.0  # toleransi lot minimum broker; jangan 
 MAX_OPEN_POSITIONS = 3            # batasi konsentrasi posisi pada satu simbol
 MAX_DAILY_DRAWDOWN_PERCENT = 5.0  # circuit breaker harian
 MAX_TOTAL_OPEN_RISK_PERCENT = 2.0 # batas seluruh risiko terbuka
+MAX_CONSECUTIVE_LOSSES = 3
+LOSS_STREAK_COOLDOWN_MINUTES = 30
+COOLDOWN_AFTER_WIN_SECONDS = 60
+COOLDOWN_AFTER_LOSS_SECONDS = 180
+MAX_WEEKLY_DRAWDOWN_PERCENT = 10.0
+MAX_EQUITY_PEAK_DRAWDOWN_PERCENT = 10.0
 SL_ATR_MULTIPLIER = 1.2         # SL lebih ketat untuk M1
 TP_ATR_MULTIPLIER = 1.8         # TP lebih kecil namun masih menjaga reward
 
@@ -68,6 +74,29 @@ MIN_TREND_ATR_MULTIPLIER = 0.12  # Lebih ketat untuk M1 agar filter tren tetap v
 MIN_ENTRY_ATR_MULTIPLIER = 0.15  # Lebih ketat untuk mencegah masuk terlalu sering di M1
 
 # =========================================================
+# FILTER EKSEKUSI & PASAR
+# =========================================================
+MAX_SPREAD_POINTS = 50.0
+MAX_SPREAD_ATR_RATIO = 0.20
+VOLATILITY_FILTER_ENABLED = True
+MIN_ATR_TO_MEDIAN_RATIO = 0.50
+MAX_ATR_TO_MEDIAN_RATIO = 2.50
+NEWS_BLACKOUT_WINDOWS = [
+    value.strip() for value in os.getenv("TRADING_NEWS_BLACKOUT_WINDOWS", "").split(",")
+    if value.strip()
+]  # format harian: "13:25-13:40,19:55-20:15" sesuai waktu lokal
+
+# =========================================================
+# PENGELOLAAN POSISI
+# =========================================================
+BREAK_EVEN_ENABLED = True
+BREAK_EVEN_TRIGGER_ATR = 1.0
+BREAK_EVEN_OFFSET_POINTS = 2.0
+TRAILING_STOP_ENABLED = True
+TRAILING_TRIGGER_ATR = 1.5
+TRAILING_DISTANCE_ATR = 0.8
+
+# =========================================================
 # JAM TRADING (WIB, adjustable)
 # =========================================================
 TRADING_HOUR_START = 0    # 0 = mulai jam 00:00 (24 jam penuh)
@@ -79,6 +108,8 @@ TRADING_HOUR_END = 24     # 24 = sampai akhir hari (24 jam penuh)
 CHECK_INTERVAL_SECONDS = 1   # hyper scalping memerlukan polling sangat cepat
 TRADE_LOG_FILE = "trade_log.csv"
 SYSTEM_LOG_FILE = "system_log.csv"
+RUNTIME_STATE_FILE = "runtime_state.json"
+INSTANCE_LOCK_FILE = "bot.lock"
 
 # =========================================================
 # MACHINE LEARNING TRADING
@@ -123,5 +154,6 @@ LEARNING_MIN_ENTRY_SCORE = 0.45
 LEARNING_COLD_START_MIN_ENTRY_SCORE = 0.30
 LEARNING_TREND_STRENGTH_DIVISOR = 1.5
 LEARNING_MIN_VALID_CLOSED_TRADES = 50
+LEARNING_ADAPTIVE_MIN_TRADES = 10
 LEARNING_MAX_DUPLICATE_TICKET_RATIO = 0.02
 LEARNING_MIN_PROFIT_VARIATION = 3

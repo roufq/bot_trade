@@ -5,3 +5,6 @@ __pycache__/
 *.csv
 *.csv.*
 .env
+bot.lock
+runtime_state.json
+runtime_state.json.tmp

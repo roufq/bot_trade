@@ -74,18 +74,20 @@ Output seharusnya mengarah ke `C:\trading\.venv\Scripts\python.exe`.
 1. Buka MT5 dan login ke akun demo.
 2. Aktifkan **Algo Trading**.
 3. Pastikan symbol emas tampil di Market Watch.
-4. Sesuaikan bagian koneksi dan symbol di `config.py`:
+4. Simpan kredensial MT5 melalui environment variable (opsional bila terminal
+   sudah login pada akun yang benar):
 
-```python
-MT5_LOGIN = 0
-MT5_PASSWORD = ""
-MT5_SERVER = ""
-MT5_PATH = ""
-SYMBOL = "XAUUSD.vx"
+```powershell
+$env:TRADING_MT5_LOGIN="12345678"
+$env:TRADING_MT5_PASSWORD="PASSWORD_ANDA"
+$env:TRADING_MT5_SERVER="NAMA-SERVER"
+$env:TRADING_MT5_PATH="C:\Program Files\MetaTrader 5\terminal64.exe"
 ```
 
-Jika MT5 sudah login pada akun yang benar, nilai login dapat dibiarkan kosong
-dan connector akan memakai sesi terminal aktif. Jangan commit kredensial akun.
+Sesuaikan hanya `SYMBOL` di `config.py` bila nama instrumen broker berbeda.
+Jika MT5 sudah login, variabel koneksi dapat dikosongkan dan connector memakai
+sesi aktif. Gunakan `SetEnvironmentVariable(..., "User")` seperti panduan
+Telegram bila kredensial perlu disimpan permanen.
 
 Uji koneksi:
 
@@ -131,6 +133,18 @@ Bot akan mengambil candle MT5 yang sudah tertutup, mengevaluasi sinyal,
 menghitung risiko, mengirim order, mencatat entry/exit, dan mengirim notifikasi.
 Hentikan secara normal dengan `Ctrl+C`.
 
+Bot juga memiliki single-instance lock, filter spread/volatilitas, blackout
+berita manual, cooldown setelah trade, loss-streak pause, drawdown
+harian/mingguan/equity-peak, break-even, dan trailing stop. Blackout berita
+diisi lewat environment variable, contoh:
+
+```powershell
+$env:TRADING_NEWS_BLACKOUT_WINDOWS="13:25-13:40,19:55-20:15"
+```
+
+Jam tersebut mengikuti waktu lokal komputer. Daftar harus diperbarui sesuai
+jadwal berita; project tidak mengunduh kalender ekonomi otomatis.
+
 ## Data lokal dan AI
 
 File berikut dibuat atau diperbarui secara lokal dan sengaja tidak disimpan di
@@ -161,6 +175,15 @@ python -c "import ai_trader; ai_trader.train_model()"
 
 Model akan disimpan sebagai `ml_model.joblib`. Model dan histori dari akun atau
 broker lain tidak otomatis cocok dengan kondisi broker Anda.
+
+Lihat statistik berjalan:
+
+```powershell
+python performance_report.py
+```
+
+Laporan mencakup win rate, profit factor, expectancy, rata-rata win/loss, loss
+streak, drawdown closed balance, spread, dan slippage.
 
 ## Backtest
 

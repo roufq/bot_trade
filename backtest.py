@@ -27,6 +27,7 @@ import config
 import mt5_connector
 import indicators
 import risk_manager
+import strategy
 
 BACKTEST_MONTHS = 6          # berapa bulan ke belakang data yang diminta
 INITIAL_EQUITY = 100.0       # modal awal simulasi -- sesuaikan sesuai rencana Anda
@@ -133,38 +134,35 @@ def run_backtest():
     spread_cost = estimate_spread_cost(symbol_info)
     print(f"Asumsi biaya spread per trade (lot minimum): ${spread_cost:.4f} (perkiraan dari spread saat ini)\n")
 
-    h1_bias = prepare_h1_bias(df_h1).sort_values("available_time")
-    m15 = prepare_m15_signals(df_m15).sort_values("time")
-
-    merged = pd.merge_asof(
-        m15, h1_bias, left_on="time", right_on="available_time", direction="backward"
-    )
-    merged["bias"] = merged["bias"].fillna("none")
-
+    df_h1 = df_h1.sort_values("time").reset_index(drop=True)
+    df_m15 = df_m15.sort_values("time").reset_index(drop=True)
     equity = INITIAL_EQUITY
     equity_start_of_day = equity
     current_day = None
     daily_stopped = False
-
-    position = None
+    positions = []
     trades = []
     equity_curve = []
+    warmup = max(config.EMA_TREND_SLOW, config.EMA_ENTRY_SLOW, config.ATR_PERIOD) + 5
 
-    for row in merged.itertuples():
+    # Candle indeks i adalah candle eksekusi. Sinyal hanya melihat candle < i,
+    # sama seperti live yang memakai closed_only=True.
+    for i in range(warmup, len(df_m15)):
+        row = df_m15.iloc[i]
         bar_day = row.time.date()
         if bar_day != current_day:
             current_day = bar_day
             equity_start_of_day = equity
             daily_stopped = False
 
-        # Cek apakah posisi terbuka kena SL/TP di candle ini
-        if position is not None:
+        remaining = []
+        for position in positions:
             if position["direction"] == "buy":
-                hit_sl = row.low <= position["sl"]
-                hit_tp = row.high >= position["tp"]
+                hit_sl = float(row.low) <= position["sl"]
+                hit_tp = float(row.high) >= position["tp"]
             else:
-                hit_sl = row.high >= position["sl"]
-                hit_tp = row.low <= position["tp"]
+                hit_sl = float(row.high) >= position["sl"]
+                hit_tp = float(row.low) <= position["tp"]
 
             if hit_sl or hit_tp:
                 exit_price = position["sl"] if hit_sl else position["tp"]
@@ -175,7 +173,9 @@ def run_backtest():
 
                 value_per_unit = symbol_info["trade_tick_value"] / symbol_info["trade_tick_size"]
                 gross_profit = price_diff * value_per_unit * position["lot"]
-                net_profit = gross_profit - spread_cost
+                # Spread sudah dimasukkan pada harga entry buy. Untuk sell,
+                # biaya spread direalisasikan pada exit ask sebagai proxy.
+                net_profit = gross_profit - (spread_cost if position["direction"] == "sell" else 0.0)
                 equity += net_profit
 
                 trades.append({
@@ -189,7 +189,9 @@ def run_backtest():
                     "profit": net_profit,
                     "equity_after": equity,
                 })
-                position = None
+            else:
+                remaining.append(position)
+        positions = remaining
 
         equity_curve.append({"time": row.time, "equity": equity})
 
@@ -203,30 +205,26 @@ def run_backtest():
         if not (config.TRADING_HOUR_START <= row.time.hour < config.TRADING_HOUR_END):
             continue
 
-        if position is not None:
-            continue  # slot penuh, MAX_OPEN_POSITIONS = 1
-
-        bias = row.bias
-        if bias == "none":
+        if len(positions) >= config.MAX_OPEN_POSITIONS:
             continue
-
-        rsi_val = row.rsi
-        if bias == "buy" and row.crossed_up and (config.RSI_BUY_MIN <= rsi_val <= config.RSI_BUY_MAX):
-            signal = "buy"
-        elif bias == "sell" and row.crossed_down and (config.RSI_SELL_MIN <= rsi_val <= config.RSI_SELL_MAX):
-            signal = "sell"
-        else:
+        entry_history = df_m15.iloc[:i].tail(100)
+        trend_history = df_h1[df_h1["time"] < row.time].tail(300)
+        if len(entry_history) < warmup or len(trend_history) < warmup:
             continue
-
-        atr_val = row.atr
-        if pd.isna(atr_val) or atr_val <= 0:
+        signal_result = strategy.evaluate(trend_history, entry_history)
+        if signal_result.signal == "none" or not signal_result.atr_value:
             continue
-
-        entry_price = row.close
+        signal = signal_result.signal
+        # OHLC MT5 umumnya berbasis bid; buy membayar spread pada entry.
+        spread_price = spread_cost / (
+            (symbol_info["trade_tick_value"] / symbol_info["trade_tick_size"])
+            * symbol_info["volume_min"]
+        ) if spread_cost > 0 else 0.0
+        entry_price = float(row.open) + spread_price if signal == "buy" else float(row.open)
         order_plan = risk_manager.build_order_plan(
             signal=signal,
             entry_price=entry_price,
-            atr_value=atr_val,
+            atr_value=signal_result.atr_value,
             equity=equity,
             contract_size=symbol_info["trade_contract_size"],
             tick_value=symbol_info["trade_tick_value"],
@@ -234,18 +232,19 @@ def run_backtest():
             volume_min=symbol_info["volume_min"],
             volume_max=symbol_info["volume_max"],
             volume_step=symbol_info["volume_step"],
+            risk_percent=config.RISK_PERCENT_PER_TRADE,
         )
         if order_plan is None:
             continue
 
-        position = {
+        positions.append({
             "direction": signal,
             "entry_price": entry_price,
             "sl": order_plan.sl_price,
             "tp": order_plan.tp_price,
             "lot": order_plan.lot_size,
             "entry_time": row.time,
-        }
+        })
 
     mt5_connector.disconnect()
 

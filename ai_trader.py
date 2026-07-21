@@ -35,9 +35,9 @@ FEATURE_COLUMNS = [
     "atr_ratio",
     "entry_hour",
     "weekday",
-    "risk_amount",
     "sl_distance",
     "tp_distance",
+    "spread_points",
 ]
 
 
@@ -49,6 +49,7 @@ def extract_features(
     df_h1: pd.DataFrame,
     df_m15: pd.DataFrame,
     signal_result: TradeSignal,
+    spread_points: float = 0.0,
 ) -> dict:
     df_h1 = add_all_indicators(
         df_h1,
@@ -106,9 +107,9 @@ def extract_features(
         "atr_ratio": atr_ratio,
         "entry_hour": int(entry_hour),
         "weekday": int(weekday),
-        "risk_amount": 0.0,
         "sl_distance": float(signal_result.atr_value * config.SL_ATR_MULTIPLIER) if signal_result.atr_value else 0.0,
         "tp_distance": float(signal_result.atr_value * config.TP_ATR_MULTIPLIER) if signal_result.atr_value else 0.0,
+        "spread_points": float(spread_points),
     }
     return features
 
@@ -126,12 +127,13 @@ def predict_score(
     df_h1: pd.DataFrame,
     df_m15: pd.DataFrame,
     signal_result: TradeSignal,
+    spread_points: float = 0.0,
 ) -> Optional[float]:
     model = _load_model()
     if model is None:
         return None
 
-    features = extract_features(df_h1, df_m15, signal_result)
+    features = extract_features(df_h1, df_m15, signal_result, spread_points=spread_points)
     x = pd.DataFrame([features])[FEATURE_COLUMNS]
     proba = model.predict_proba(x)[0]
     return float(proba[1])
@@ -176,23 +178,35 @@ def _prepare_dataframe_from_trade_log(df_trade: pd.DataFrame, df_closed: pd.Data
         return pd.DataFrame()
 
     merged = pd.concat(merged_frames, ignore_index=True, sort=False)
-    dedupe_columns = [c for c in ["timestamp_entry", "ticket", "order_id"] if c in merged.columns]
-    if dedupe_columns:
-        merged = merged.drop_duplicates(subset=dedupe_columns)
+    if "ticket" in merged.columns:
+        merged = merged.drop_duplicates(subset=["ticket"], keep="first")
+    elif "order_id" in merged.columns:
+        merged = merged.drop_duplicates(subset=["order_id"], keep="first")
 
     merged["signal_binary"] = merged["signal_entry"].map({"buy": 1, "sell": 0})
-    if "risk_amount_entry" in merged.columns:
-        merged["risk_amount"] = merged["risk_amount_entry"]
     merged["entry_hour"] = pd.to_datetime(merged["entry_time"]).dt.hour
     merged["weekday"] = pd.to_datetime(merged["entry_time"]).dt.weekday
-    merged["sl_distance"] = (merged["entry_price"] - merged["sl_price"]).abs()
-    merged["tp_distance"] = (merged["tp_price"] - merged["entry_price"]).abs()
-    merged["close_to_ema_fast"] = merged["sl_distance"] / merged["h1_atr"].replace(0, np.nan)
-    merged["close_to_ema_fast"] = merged["close_to_ema_fast"].fillna(0.0)
-    merged["ema_gap_ratio"] = merged["h1_ema_gap"] / merged["h1_atr"].replace(0, np.nan)
-    merged["ema_gap_ratio"] = merged["ema_gap_ratio"].fillna(0.0)
-    merged["price_vs_ema_fast"] = merged["close_to_ema_fast"]
-    for optional in ["rsi_diff_m15", "h1_ema_slope", "m15_ema_slope", "atr_ratio"]:
+    sl_column = "sl_price_entry" if "sl_price_entry" in merged.columns else "sl_price"
+    tp_column = "tp_price_entry" if "tp_price_entry" in merged.columns else "tp_price"
+    merged["sl_distance"] = (merged["entry_price"] - merged[sl_column]).abs()
+    merged["tp_distance"] = (merged[tp_column] - merged["entry_price"]).abs()
+    fallback_close = merged["sl_distance"] / merged["h1_atr"].replace(0, np.nan)
+    if "close_to_ema_fast" not in merged:
+        merged["close_to_ema_fast"] = fallback_close
+    else:
+        merged["close_to_ema_fast"] = pd.to_numeric(merged["close_to_ema_fast"], errors="coerce").fillna(fallback_close)
+    fallback_gap = merged["h1_ema_gap"] / merged["h1_atr"].replace(0, np.nan)
+    if "ema_gap_ratio" not in merged:
+        merged["ema_gap_ratio"] = fallback_gap
+    else:
+        merged["ema_gap_ratio"] = pd.to_numeric(merged["ema_gap_ratio"], errors="coerce").fillna(fallback_gap)
+    if "price_vs_ema_fast" not in merged:
+        merged["price_vs_ema_fast"] = merged["close_to_ema_fast"]
+    else:
+        merged["price_vs_ema_fast"] = pd.to_numeric(
+            merged["price_vs_ema_fast"], errors="coerce"
+        ).fillna(merged["close_to_ema_fast"])
+    for optional in ["rsi_diff_m15", "h1_ema_slope", "m15_ema_slope", "atr_ratio", "spread_points"]:
         if optional not in merged.columns:
             merged[optional] = 0.0
         else:
@@ -237,7 +251,7 @@ def train_model() -> None:
         return
 
     from sklearn.model_selection import RandomizedSearchCV, TimeSeriesSplit
-    from sklearn.metrics import accuracy_score, roc_auc_score, classification_report
+    from sklearn.metrics import accuracy_score, roc_auc_score, classification_report, brier_score_loss
 
     param_grid = {
         "n_estimators": [100, 150, 200],
@@ -285,14 +299,44 @@ def train_model() -> None:
         random_state=42,
         n_jobs=-1,
     )
-    final_model.fit(X_train, y_train)
+    calibration_index = int(len(X_train) * 0.85)
+    X_model, y_model = X_train.iloc[:calibration_index], y_train.iloc[:calibration_index]
+    X_calibration, y_calibration = X_train.iloc[calibration_index:], y_train.iloc[calibration_index:]
+    final_model.fit(X_model, y_model)
 
-    y_pred = final_model.predict(X_test)
-    y_proba = final_model.predict_proba(X_test)[:, 1]
+    model_to_save = final_model
+    if y_model.nunique() == 2 and y_calibration.nunique() == 2 and len(y_calibration) >= 10:
+        try:
+            from sklearn.calibration import CalibratedClassifierCV
+            from sklearn.frozen import FrozenEstimator
+            calibrated = CalibratedClassifierCV(FrozenEstimator(final_model), method="sigmoid")
+            calibrated.fit(X_calibration, y_calibration)
+            model_to_save = calibrated
+            print("Kalibrasi probabilitas: sigmoid pada validation set berbasis waktu")
+        except (ImportError, ValueError) as exc:
+            print(f"Kalibrasi dilewati: {exc}")
+            final_model.fit(X_train, y_train)
+    else:
+        print("Kalibrasi dilewati: validation set belum memiliki cukup win dan loss")
+        final_model.fit(X_train, y_train)
+
+    y_pred = model_to_save.predict(X_test)
+    y_proba = model_to_save.predict_proba(X_test)[:, 1]
 
     print(f"Akurasi: {accuracy_score(y_test, y_pred):.4f}")
     print(f"AUC: {roc_auc_score(y_test, y_proba):.4f}")
+    print(f"Brier score: {brier_score_loss(y_test, y_proba):.4f} (lebih kecil lebih baik)")
     print(classification_report(y_test, y_pred))
 
-    joblib.dump(final_model, config.MODEL_FILE)
+    calibration_report = pd.DataFrame({"actual": y_test.to_numpy(), "probability": y_proba})
+    calibration_report["probability_bin"] = pd.cut(
+        calibration_report["probability"], bins=[0, .2, .4, .6, .8, 1.0], include_lowest=True
+    )
+    print("Kalibrasi out-of-sample:")
+    print(calibration_report.groupby("probability_bin", observed=True).agg(
+        samples=("actual", "size"), actual_win_rate=("actual", "mean"),
+        average_prediction=("probability", "mean"),
+    ))
+
+    joblib.dump(model_to_save, config.MODEL_FILE)
     print(f"Model tersimpan ke {config.MODEL_FILE}")

@@ -31,7 +31,7 @@ class LearningDecision:
     recent_trades: int
 
 
-def validate_closed_trade_history(df: pd.DataFrame) -> tuple[bool, str]:
+def validate_closed_trade_history(df: pd.DataFrame, min_trades: int | None = None) -> tuple[bool, str]:
     """Tolak histori yang terlalu kecil, duplikat, atau hasilnya tidak bervariasi."""
     if df.empty:
         return False, "histori closed trade kosong"
@@ -39,7 +39,8 @@ def validate_closed_trade_history(df: pd.DataFrame) -> tuple[bool, str]:
     missing = required - set(df.columns)
     if missing:
         return False, f"kolom wajib hilang: {sorted(missing)}"
-    if len(df) < config.LEARNING_MIN_VALID_CLOSED_TRADES:
+    min_trades = config.LEARNING_MIN_VALID_CLOSED_TRADES if min_trades is None else min_trades
+    if len(df) < min_trades:
         return False, f"baru {len(df)} trade valid"
 
     tickets = df["ticket"].fillna("").astype(str).str.strip()
@@ -67,7 +68,7 @@ def load_recent_closed_trades(max_trades: int = config.LEARNING_HISTORICAL_TRADE
     if df.empty:
         return df
 
-    valid, _ = validate_closed_trade_history(df)
+    valid, _ = validate_closed_trade_history(df, min_trades=config.LEARNING_ADAPTIVE_MIN_TRADES)
     if not valid:
         return pd.DataFrame(columns=df.columns)
     return df.tail(max_trades)

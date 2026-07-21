@@ -32,9 +32,10 @@ tersedia di [TELEGRAM_SETUP.md](TELEGRAM_SETUP.md).
 
 ## Konfigurasi
 
-Buka `config.py` dan sesuaikan:
+Sesuaikan konfigurasi berikut:
 
-- `MT5_LOGIN`, `MT5_PASSWORD`, `MT5_SERVER` -- detail akun MT5 Anda.
+- Kredensial MT5 disimpan melalui environment variable `TRADING_MT5_LOGIN`,
+  `TRADING_MT5_PASSWORD`, `TRADING_MT5_SERVER`, dan `TRADING_MT5_PATH`.
 - `SYMBOL` agar sesuai nama instrumen broker.
 - Token Telegram dan Chat ID disimpan sebagai environment variable, bukan di
   source code.
@@ -53,6 +54,10 @@ mengecek sinyal setiap `CHECK_INTERVAL_SECONDS` detik. Hentikan dengan
 `Ctrl+C` -- bot akan mencatat log dan mengirim notifikasi Telegram saat
 berhenti.
 
+Proteksi runtime mencakup satu instance, spread/volatilitas, blackout berita
+manual, cooldown, loss streak, drawdown harian/mingguan/equity peak,
+break-even, trailing stop, dan rekonsiliasi ticket setelah restart.
+
 ## Struktur file
 
 | File | Fungsi |
@@ -68,6 +73,10 @@ berhenti.
 | `learner.py` | Adaptasi risiko dengan guardrail kualitas histori |
 | `ai_trader.py` | Model ML opsional dengan evaluasi berbasis waktu |
 | `data_quality.py` | Audit kelayakan closed trade untuk learning |
+| `market_filters.py` | Spread, volatilitas, blackout, cooldown, loss streak |
+| `position_manager.py` | Break-even dan trailing stop |
+| `runtime_guard.py` | Single-instance lock dan state restart |
+| `performance_report.py` | Statistik performa, spread, dan slippage |
 
 ## Validasi data AI
 

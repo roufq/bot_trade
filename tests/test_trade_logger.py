@@ -68,8 +68,9 @@ class TradeLoggerRepairTests(unittest.TestCase):
             self.assertEqual(len(rows[0]), len(header))
             self.assertEqual(len(rows[1]), len(header))
             self.assertEqual(len(rows[2]), len(header))
-            self.assertIn("Continuation: tren naik, harga pullback, RSI valid", rows[1][-1])
-            self.assertEqual(rows[2][-1], "")
+            reason_index = header.index("reason")
+            self.assertIn("Continuation: tren naik, harga pullback, RSI valid", rows[1][reason_index])
+            self.assertEqual(rows[2][reason_index], "")
 
     def test_clean_trade_log_removes_rows_without_position_ticket(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

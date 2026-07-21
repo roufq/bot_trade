@@ -165,6 +165,24 @@ def get_open_positions(symbol: str) -> list:
     return list(positions)
 
 
+def modify_position_sltp(position_ticket: int, symbol: str, sl_price: float, tp_price: float) -> dict:
+    """Ubah SL/TP posisi tanpa mengubah volume."""
+    _require_mt5()
+    request = {
+        "action": mt5.TRADE_ACTION_SLTP,
+        "position": int(position_ticket),
+        "symbol": symbol,
+        "sl": float(sl_price),
+        "tp": float(tp_price),
+    }
+    result = mt5.order_send(request)
+    if result is None:
+        return {"success": False, "error": f"order_send gagal: {mt5.last_error()}"}
+    if result.retcode == mt5.TRADE_RETCODE_DONE:
+        return {"success": True}
+    return {"success": False, "error": f"retcode={result.retcode}, comment={result.comment}"}
+
+
 def get_recent_new_position_ticket(symbol: str, existing_tickets: set[int] | list | None = None, max_retries: int = 5,
                                    retry_delay_seconds: float = 0.5) -> Optional[int]:
     """Mencari ticket posisi baru yang belum ada di daftar ticket lama."""

@@ -16,7 +16,10 @@ TRADE_FIELDS = [
     "entry_time", "entry_price", "sl_price", "tp_price", "atr_value",
     "risk_amount", "h1_ema_gap", "h1_rsi", "h1_atr",
     "m15_ema_gap", "m15_rsi", "m15_atr", "trend_strength",
-    "ai_score", "combined_score", "reason",
+    "ai_score", "combined_score", "reason", "signal_price", "requested_price",
+    "spread_points", "slippage_points",
+    "close_to_ema_fast", "ema_gap_ratio", "price_vs_ema_fast", "rsi_diff_m15",
+    "h1_ema_slope", "m15_ema_slope", "atr_ratio", "entry_hour", "weekday",
 ]
 
 SYSTEM_FIELDS = ["timestamp", "event", "detail"]
@@ -297,9 +300,12 @@ def log_trade(order_id: str, position_ticket: str | int, signal: str, lot_size: 
               risk_amount: float, h1_ema_gap: float, h1_rsi: float, h1_atr: float,
               m15_ema_gap: float, m15_rsi: float, m15_atr: float,
               trend_strength: float, ai_score: float, combined_score: float,
-              reason: str) -> None:
+              reason: str, signal_price: float = 0.0, requested_price: float = 0.0,
+              spread_points: float = 0.0, slippage_points: float = 0.0,
+              feature_values: dict | None = None) -> None:
     """Mencatat satu trade yang baru dieksekusi."""
     _ensure_file(config.TRADE_LOG_FILE, TRADE_FIELDS)
+    feature_values = feature_values or {}
     row = {
         "timestamp": datetime.now().isoformat(timespec="seconds"),
         "order_id": order_id,
@@ -323,6 +329,19 @@ def log_trade(order_id: str, position_ticket: str | int, signal: str, lot_size: 
         "ai_score": round(ai_score, 4),
         "combined_score": round(combined_score, 4),
         "reason": reason,
+        "signal_price": signal_price,
+        "requested_price": requested_price,
+        "spread_points": round(spread_points, 2),
+        "slippage_points": round(slippage_points, 2),
+        "close_to_ema_fast": feature_values.get("close_to_ema_fast", ""),
+        "ema_gap_ratio": feature_values.get("ema_gap_ratio", ""),
+        "price_vs_ema_fast": feature_values.get("price_vs_ema_fast", ""),
+        "rsi_diff_m15": feature_values.get("rsi_diff_m15", ""),
+        "h1_ema_slope": feature_values.get("h1_ema_slope", ""),
+        "m15_ema_slope": feature_values.get("m15_ema_slope", ""),
+        "atr_ratio": feature_values.get("atr_ratio", ""),
+        "entry_hour": feature_values.get("entry_hour", ""),
+        "weekday": feature_values.get("weekday", ""),
     }
     with open(config.TRADE_LOG_FILE, "a", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=TRADE_FIELDS)

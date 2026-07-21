@@ -14,6 +14,7 @@ Hentikan dengan: Ctrl+C
 import sys
 import time
 from datetime import datetime, date
+import pandas as pd
 
 import config
 import mt5_connector
@@ -23,8 +24,20 @@ import trade_logger
 import notifier
 import learner
 import ai_trader
+import market_filters
+import position_manager
+import runtime_guard
 
-_last_successful_entry_bar = None
+_last_evaluated_entry_bar = None
+_last_console_status = None
+
+
+def print_status(message: str) -> None:
+    """Cetak status hanya saat isinya berubah agar loop 1 detik tidak membanjiri terminal."""
+    global _last_console_status
+    if message != _last_console_status:
+        print(f"[{datetime.now()}] {message}")
+        _last_console_status = message
 
 
 def is_within_trading_hours() -> bool:
@@ -37,7 +50,7 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
 
     # 1. Cek status sistem
     if not is_within_trading_hours():
-        print(f"[{datetime.now()}] Di luar jam trading, lewati siklus.")
+        print_status("Di luar jam trading, lewati siklus.")
         return previous_position_tickets
 
     # 2. Cek drawdown harian
@@ -47,6 +60,15 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
         return previous_position_tickets
 
     equity_now = account["equity"]
+    _, weekly_dd, peak_dd = runtime_guard.update_equity_state(equity_now)
+    if weekly_dd >= config.MAX_WEEKLY_DRAWDOWN_PERCENT:
+        trade_logger.log_system_event("weekly_drawdown_limit", f"drawdown={weekly_dd:.2f}%")
+        notifier.notify_error(f"Bot berhenti: drawdown mingguan {weekly_dd:.2f}%")
+        raise SystemExit(f"Drawdown mingguan {weekly_dd:.2f}% mencapai batas.")
+    if peak_dd >= config.MAX_EQUITY_PEAK_DRAWDOWN_PERCENT:
+        trade_logger.log_system_event("peak_drawdown_limit", f"drawdown={peak_dd:.2f}%")
+        notifier.notify_error(f"Bot berhenti: drawdown equity peak {peak_dd:.2f}%")
+        raise SystemExit(f"Drawdown dari equity peak {peak_dd:.2f}% mencapai batas.")
     limit_hit, drawdown_pct = risk_manager.check_daily_drawdown(equity_start_of_day, equity_now)
     if limit_hit:
         print(f"[{datetime.now()}] Drawdown harian {drawdown_pct:.2f}% >= limit. Bot berhenti untuk hari ini.")
@@ -90,12 +112,18 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
             f"ticket={ticket}, profit={profit:+.2f}, balance_after={balance_after:.2f}",
         )
         order_id = str(entry_info.get("order_id", ""))
+        close_reason = "closed_position"
+        if abs(float(deal["price"]) - float(entry_info.get("sl_price", 0.0))) <= 1e-6:
+            close_reason = "closed_position_sl"
+        elif abs(float(deal["price"]) - float(entry_info.get("tp_price", 0.0))) <= 1e-6:
+            close_reason = "closed_position_tp"
+        exit_time = datetime.fromtimestamp(deal["time"]).isoformat(timespec="seconds") if deal.get("time") else datetime.now().isoformat(timespec="seconds")
         trade_logger.log_closed_trade(
             order_id=order_id,
             ticket=ticket,
             signal=signal_label,
             lot_size=deal["volume"],
-            exit_time=datetime.now().isoformat(timespec="seconds"),
+            exit_time=exit_time,
             close_price=deal["price"],
             sl_price=entry_info.get("sl_price", 0.0),
             tp_price=entry_info.get("tp_price", 0.0),
@@ -105,7 +133,7 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
             balance_after=balance_after,
             swap=deal.get("swap", 0),
             commission=deal.get("commission", 0),
-            reason="closed_position",
+            reason=close_reason,
         )
         notifier.notify_trade_closed(
             signal=signal_label,
@@ -115,25 +143,7 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
             balance_after=balance_after,
         )
 
-    # 3. Cek slot posisi (batasan kasar jumlah)
-    if not risk_manager.can_open_new_position(len(open_positions)):
-        print(f"[{datetime.now()}] Slot posisi penuh ({len(open_positions)}/{config.MAX_OPEN_POSITIONS}), lewati.")
-        return current_tickets
-
-    # 3b. Cek total risiko gabungan dari semua posisi terbuka (batasan presisi)
-    symbol_info_check = mt5_connector.get_symbol_info(config.SYMBOL)
-    if symbol_info_check is not None:
-        # risk budget masih dicek sebelum sinyal, tapi angka adaptif akan dihitung
-        # kembali setelah sinyal muncul.
-        within_budget, current_open_risk = risk_manager.can_open_within_risk_budget(
-            open_positions, equity_now,
-            symbol_info_check["trade_tick_value"], symbol_info_check["trade_tick_size"],
-            config.RISK_PERCENT_PER_TRADE,
-        )
-        if not within_budget:
-            print(f"[{datetime.now()}] Total risiko terbuka sudah {current_open_risk:.2f}% "
-                  f"(+{config.RISK_PERCENT_PER_TRADE}% baru akan melebihi batas {config.MAX_TOTAL_OPEN_RISK_PERCENT}%), lewati.")
-            return current_tickets
+    runtime_guard.save_tracked_tickets(current_tickets)
 
     # 4. Ambil data & cek sinyal
     df_h1 = mt5_connector.get_rates(config.SYMBOL, config.TF_TREND, count=300)
@@ -142,18 +152,65 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
         trade_logger.log_system_event("error", "Gagal mengambil data candle")
         return current_tickets
 
-    global _last_successful_entry_bar
-    entry_bar_time = str(df_m15.iloc[-1]["time"])
-    if entry_bar_time == _last_successful_entry_bar:
+    symbol_info = mt5_connector.get_symbol_info(config.SYMBOL)
+    prices = mt5_connector.get_current_prices(config.SYMBOL)
+    if symbol_info is None or prices is None:
+        trade_logger.log_system_event("error", "Gagal mengambil symbol_info/harga")
+        return current_tickets
+    ask_price, bid_price = prices
+
+    atr_now = float(strategy.evaluate(df_h1, df_m15).atr_value or 0.0)
+    if atr_now <= 0:
+        from indicators import calculate_atr
+        atr_series = calculate_atr(df_m15, config.ATR_PERIOD).dropna()
+        atr_now = float(atr_series.iloc[-1]) if not atr_series.empty else 0.0
+    for event in position_manager.manage(open_positions, atr_now, ask_price, bid_price, symbol_info):
+        trade_logger.log_system_event("position_management", event)
+
+    blackout, blackout_reason = market_filters.in_news_blackout()
+    if blackout:
+        print_status(f"Entry dijeda: {blackout_reason}")
+        return current_tickets
+    try:
+        closed_df = pd.DataFrame(trade_logger.load_closed_trades()).tail(500)
+    except Exception:
+        closed_df = None
+    guard_allowed, guard_reason = market_filters.recent_trade_guard(closed_df)
+    if not guard_allowed:
+        print_status(f"Entry dijeda: {guard_reason}")
         return current_tickets
 
+    volatility_ok, volatility_reason = market_filters.check_volatility(df_m15)
+    if not volatility_ok:
+        print_status(f"Entry ditolak filter volatilitas: {volatility_reason}")
+        return current_tickets
+
+    spread_ok, spread_reason, spread_points = market_filters.check_spread(
+        ask_price, bid_price,
+        float(symbol_info.get("point", symbol_info["trade_tick_size"])),
+        atr_now,
+    )
+    if not spread_ok:
+        print_status(f"Entry ditolak filter spread: {spread_reason}")
+        return current_tickets
+
+    if not risk_manager.can_open_new_position(len(open_positions)):
+        print_status(f"Slot posisi penuh ({len(open_positions)}/{config.MAX_OPEN_POSITIONS}).")
+        return current_tickets
+
+    global _last_evaluated_entry_bar
+    entry_bar_time = str(df_m15.iloc[-1]["time"])
+    if entry_bar_time == _last_evaluated_entry_bar:
+        return current_tickets
+    _last_evaluated_entry_bar = entry_bar_time
+
     signal_result = strategy.evaluate(df_h1, df_m15)
-    print(f"[{datetime.now()}] Sinyal: {signal_result.signal} - {signal_result.reason}")
+    print_status(f"Sinyal: {signal_result.signal} - {signal_result.reason}")
 
     if signal_result.signal == "none":
         return current_tickets
 
-    model_score = ai_trader.predict_score(df_h1, df_m15, signal_result)
+    model_score = ai_trader.predict_score(df_h1, df_m15, signal_result, spread_points=spread_points)
     if model_score is not None:
         print(f"[{datetime.now()}] AI model probability trade-profit: {model_score:.2f}")
     else:
@@ -220,21 +277,7 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
         return current_tickets
 
     # 5. Hitung risiko & kirim order
-    symbol_info = mt5_connector.get_symbol_info(config.SYMBOL)
-    if symbol_info is None:
-        trade_logger.log_system_event("error", "Gagal mengambil symbol_info")
-        return current_tickets
-
-    prices = mt5_connector.get_current_prices(config.SYMBOL)
-    if prices is None:
-        trade_logger.log_system_event("error", "Gagal mengambil harga terkini")
-        return current_tickets
-    ask_price, bid_price = prices
     real_entry_price = ask_price if signal_result.signal == "buy" else bid_price
-
-    if symbol_info is None:
-        trade_logger.log_system_event("error", "Gagal mengambil symbol_info")
-        return current_tickets
 
     if not risk_manager.can_open_new_position(len(open_positions)):
         print(f"[{datetime.now()}] Slot posisi penuh ({len(open_positions)}/{config.MAX_OPEN_POSITIONS}), lewati.")
@@ -300,10 +343,9 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
     )
 
     if result["success"]:
-        _last_successful_entry_bar = entry_bar_time
         print(f"[{datetime.now()}] Order berhasil: {result}")
         entry_time = datetime.now().isoformat(timespec="seconds")
-        features = ai_trader.extract_features(df_h1, df_m15, signal_result)
+        features = ai_trader.extract_features(df_h1, df_m15, signal_result, spread_points=spread_points)
 
         # Dapatkan ticket posisi dari deal API terlebih dahulu untuk kasus scalping
         # posisi yang langsung tertutup sebelum bisa terdeteksi lewat open positions.
@@ -318,6 +360,13 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
                 existing_tickets=current_tickets,
             )
         position_ticket = str(new_ticket) if new_ticket is not None else ""
+        point = float(symbol_info.get("point", symbol_info["trade_tick_size"]))
+        adverse_slippage = (
+            result["price"] - real_entry_price
+            if signal_result.signal == "buy"
+            else real_entry_price - result["price"]
+        )
+        slippage_points = adverse_slippage / point if point > 0 else 0.0
 
         trade_logger.log_trade(
             order_id=str(result.get("order_id", "")),
@@ -340,6 +389,11 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
             ai_score=model_score if model_score is not None else 0.0,
             combined_score=combined_score,
             reason=signal_result.reason,
+            signal_price=signal_result.entry_price or 0.0,
+            requested_price=real_entry_price,
+            spread_points=spread_points,
+            slippage_points=slippage_points,
+            feature_values=features,
         )
         if position_ticket:
             try:
@@ -364,9 +418,14 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
 
 
 def main() -> None:
+    instance_lock = runtime_guard.SingleInstanceLock()
+    if not instance_lock.acquire():
+        print("Bot sudah berjalan pada proses lain. Instance kedua dibatalkan.")
+        return
     if not mt5_connector.connect():
         trade_logger.ensure_log_files()
         trade_logger.log_system_event("error", "Gagal konek ke MT5, bot tidak dimulai")
+        instance_lock.release()
         return
 
     trade_logger.ensure_log_files()
@@ -376,7 +435,8 @@ def main() -> None:
     account = mt5_connector.get_account_info()
     equity_start_of_day = account["equity"] if account else 0.0
     current_day = date.today()
-    open_tickets = {p.ticket for p in mt5_connector.get_open_positions(config.SYMBOL)}
+    current_open_tickets = {p.ticket for p in mt5_connector.get_open_positions(config.SYMBOL)}
+    open_tickets = current_open_tickets | runtime_guard.get_tracked_tickets()
 
     try:
         while True:
@@ -388,6 +448,7 @@ def main() -> None:
                 trade_logger.log_system_event("new_day", f"equity_start={equity_start_of_day}")
 
             open_tickets = run_cycle(equity_start_of_day, open_tickets)
+            runtime_guard.save_tracked_tickets(open_tickets)
             time.sleep(config.CHECK_INTERVAL_SECONDS)
 
     except SystemExit as e:
@@ -402,6 +463,7 @@ def main() -> None:
         notifier.notify_error(str(e))
     finally:
         mt5_connector.disconnect()
+        instance_lock.release()
 
 
 if __name__ == "__main__":
