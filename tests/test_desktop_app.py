@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+import re
 import unittest
 import tempfile
 
@@ -85,6 +86,22 @@ class DesktopSettingsTests(unittest.TestCase):
         for name, preset in desktop_app.TRADING_PRESETS.items():
             with self.subTest(name=name):
                 self.assertEqual(desktop_app.validate_settings(preset), [])
+
+    def test_news_calendar_url_must_be_http(self):
+        errors = desktop_app.validate_settings({"TRADING_NEWS_CALENDAR_URL": "calendar.local"})
+        self.assertTrue(any("URL kalender" in error for error in errors))
+
+    def test_every_desktop_setting_is_consumed_by_config(self):
+        config_source = (Path(__file__).resolve().parents[1] / "config.py").read_text(encoding="utf-8")
+        referenced = set(re.findall(r'"(TRADING_[A-Z0-9_]+)"', config_source))
+        desktop_fields = {item[1] for item in desktop_app.SETTING_FIELDS}
+        self.assertEqual(desktop_fields - referenced, set())
+        self.assertEqual(referenced - desktop_fields, set())
+
+    def test_source_connection_tools_dispatch_through_desktop_cli(self):
+        for mode in ("mt5", "telegram"):
+            command = desktop_app.process_command(mode)
+            self.assertEqual(command[-2:], ["--tool", mode])
 
 
 if __name__ == "__main__":

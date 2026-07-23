@@ -74,7 +74,7 @@ class RiskSizingTests(unittest.TestCase):
         )
         self.assertIsNotNone(plan)
         self.assertEqual(plan.lot_size, 0.01)
-        self.assertAlmostEqual(plan.risk_amount, 2.4)
+        self.assertAlmostEqual(plan.risk_amount, 2 * risk_manager.config.SL_ATR_MULTIPLIER)
 
     def test_open_risk_uses_stop_distance(self):
         positions = [SimpleNamespace(price_open=100.0, sl=99.0, volume=0.1)]

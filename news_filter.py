@@ -56,6 +56,8 @@ def is_blackout(now: datetime | None = None) -> tuple[bool, str]:
                 _cache.update({"loaded_at": time.time(), "events": events})
         except (requests.RequestException, ValueError):
             # Fail-safe tidak mematikan bot bila feed opsional gagal; blackout
-            # manual tetap tersedia dan error dapat dimonitor di system log.
+            # manual tetap tersedia. Simpan waktu percobaan agar endpoint gagal
+            # tidak dipanggil dan dicatat setiap detik.
+            _cache["loaded_at"] = time.time()
             return False, "calendar API gagal, gunakan blackout manual"
     return event_blackout(_cache["events"], now)

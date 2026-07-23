@@ -1,5 +1,5 @@
 #define MyAppName "AI Trading Desktop"
-#define MyAppVersion "1.2.0"
+#define MyAppVersion "1.2.2"
 #define MyAppPublisher "AI Trading Desktop"
 #define MyAppExeName "AITradingDesktop.exe"
 

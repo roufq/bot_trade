@@ -7,6 +7,7 @@ import unittest
 from unittest.mock import patch
 
 import pandas as pd
+import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -98,6 +99,16 @@ class NewsFilterTests(unittest.TestCase):
         blocked, reason = news_filter.event_blackout(events, local_event)
         self.assertTrue(blocked)
         self.assertIn("NFP", reason)
+
+    def test_failed_calendar_request_is_throttled(self):
+        news_filter._cache.update({"loaded_at": 0.0, "events": []})
+        with patch.object(news_filter.config, "NEWS_CALENDAR_URL", "https://invalid.test"), \
+                patch.object(news_filter.config, "NEWS_REFRESH_SECONDS", 300), \
+                patch.object(news_filter.time, "time", side_effect=[1000.0, 1000.0, 1001.0]), \
+                patch.object(news_filter.requests, "get", side_effect=requests.RequestException) as request:
+            self.assertIn("gagal", news_filter.is_blackout()[1])
+            self.assertEqual(news_filter.is_blackout(), (False, ""))
+        self.assertEqual(request.call_count, 1)
 
 
 if __name__ == "__main__":

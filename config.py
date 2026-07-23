@@ -6,6 +6,7 @@ mengubah kode inti di file lain.
 """
 
 import os
+from pathlib import Path
 
 
 def _env_float(name: str, default: float) -> float:
@@ -37,6 +38,15 @@ MT5_LOGIN = int(os.getenv("TRADING_MT5_LOGIN", "0") or 0)
 MT5_PASSWORD = os.getenv("TRADING_MT5_PASSWORD", "")
 MT5_SERVER = os.getenv("TRADING_MT5_SERVER", "")
 MT5_PATH = os.getenv("TRADING_MT5_PATH", "")
+
+# Satu lokasi data dapat dipakai bersama oleh engine source dan aplikasi
+# desktop. Jika tidak diisi, engine tetap memakai working directory saat ini.
+DATA_DIR = Path(os.getenv("TRADING_DATA_DIR", ".")).expanduser()
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _data_file(name: str) -> str:
+    return str(DATA_DIR / name)
 
 # =========================================================
 # INSTRUMEN & TIMEFRAME
@@ -157,16 +167,16 @@ TRADING_HOUR_END = _env_int("TRADING_HOUR_END", 24)
 # SIKLUS & LOGGING
 # =========================================================
 CHECK_INTERVAL_SECONDS = 1   # hyper scalping memerlukan polling sangat cepat
-TRADE_LOG_FILE = "trade_log.csv"
-SYSTEM_LOG_FILE = "system_log.csv"
-SHADOW_SIGNAL_LOG_FILE = "shadow_signal_log.csv"
-RUNTIME_STATE_FILE = "runtime_state.json"
-INSTANCE_LOCK_FILE = "bot.lock"
+TRADE_LOG_FILE = _data_file("trade_log.csv")
+SYSTEM_LOG_FILE = _data_file("system_log.csv")
+SHADOW_SIGNAL_LOG_FILE = _data_file("shadow_signal_log.csv")
+RUNTIME_STATE_FILE = _data_file("runtime_state.json")
+INSTANCE_LOCK_FILE = _data_file("bot.lock")
 
 # =========================================================
 # MACHINE LEARNING TRADING
 # =========================================================
-MODEL_FILE = "ml_model.joblib"
+MODEL_FILE = _data_file("ml_model.joblib")
 AI_FORCE_MODEL_ONLY = False
 AI_USE_MODEL_SCORE_AS_ENTRY_SCORE = True
 AI_MODEL_ENTRY_WEIGHT = 0.6
@@ -177,7 +187,7 @@ AI_RISK_MULTIPLIER_HIGH_CONFIDENCE = 1.10
 AI_RISK_MULTIPLIER_LOW_CONFIDENCE = 0.85
 AI_ENABLE_MODEL_TRAINING = True
 AI_MODEL_SEARCH_ITERATIONS = 20
-AI_MODEL_REGISTRY_DIR = "model_registry"
+AI_MODEL_REGISTRY_DIR = _data_file("model_registry")
 AI_MODEL_MIN_AUC = 0.52
 AI_MODEL_MAX_BRIER = 0.30
 AI_MIN_EXPECTED_R_FOR_TRADE = 0.10
@@ -199,7 +209,7 @@ TELEGRAM_ENABLED = bool(TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID)
 # =========================================================
 # PEMBELAJARAN ADAPTIF
 # =========================================================
-CLOSED_TRADE_LOG_FILE = "closed_trade_log.csv"
+CLOSED_TRADE_LOG_FILE = _data_file("closed_trade_log.csv")
 LEARNING_HISTORICAL_TRADES_WINDOW = 50
 LEARNING_LOSS_STREAK_THRESHOLD = 3
 LEARNING_LOSS_STREAK_MULTIPLIER = 0.6

@@ -12,11 +12,11 @@ import threading
 import time
 from pathlib import Path
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import filedialog, messagebox, ttk
 
 
 APP_TITLE = "AI Trading Desktop"
-APP_VERSION = "1.2.0"
+APP_VERSION = "1.2.2"
 COLORS = {
     "bg": "#0B1220", "surface": "#111B2E", "surface_alt": "#17233A",
     "border": "#24324A", "text": "#E8EEF8", "muted": "#91A0B8",
@@ -54,8 +54,14 @@ RUNTIME_ROOT = choose_runtime_root(
     os.getenv("LOCALAPPDATA", ""),
 )
 RUNTIME_ROOT.mkdir(parents=True, exist_ok=True)
+# Semua mode frozen (--engine dan --tool) harus membaca lokasi yang sama,
+# meskipun EXE dipanggil dari working directory lain.
+os.environ["TRADING_DATA_DIR"] = str(RUNTIME_ROOT)
+if getattr(sys, "frozen", False):
+    os.chdir(RUNTIME_ROOT)
 
 SETTING_FIELDS = [
+    ("Folder data terpadu", "TRADING_DATA_DIR", str(RUNTIME_ROOT), False),
     ("Symbol broker", "TRADING_SYMBOL", "XAUUSD.vx", False),
     ("Risiko per trade (%)", "TRADING_RISK_PERCENT", "0.50", False),
     ("Max drawdown harian (%)", "TRADING_MAX_DAILY_DRAWDOWN_PERCENT", "5.0", False),
@@ -93,6 +99,7 @@ SETTING_FIELDS = [
     ("Token Telegram", "TRADING_TELEGRAM_BOT_TOKEN", "", True),
     ("Chat ID Telegram", "TRADING_TELEGRAM_CHAT_ID", "", False),
     ("Blackout berita", "TRADING_NEWS_BLACKOUT_WINDOWS", "", False),
+    ("URL kalender berita", "TRADING_NEWS_CALENDAR_URL", "", True),
 ]
 
 BOOLEAN_SETTINGS = {"TRADING_BREAK_EVEN_ENABLED", "TRADING_TRAILING_STOP_ENABLED"}
@@ -205,6 +212,9 @@ def validate_settings(values: dict[str, str]) -> list[str]:
     login = current("TRADING_MT5_LOGIN").strip()
     if login and not login.isdigit():
         errors.append("Login MT5 harus berupa angka.")
+    news_url = current("TRADING_NEWS_CALENDAR_URL").strip()
+    if news_url and not news_url.lower().startswith(("https://", "http://")):
+        errors.append("URL kalender berita harus diawali https:// atau http://.")
     return errors
 
 
@@ -241,6 +251,8 @@ def save_user_environment(values: dict[str, str]) -> None:
 def process_command(mode: str) -> list[str]:
     if getattr(sys, "frozen", False):
         return [sys.executable, "--tool", mode] if mode != "engine" else [sys.executable, "--engine"]
+    if mode in {"mt5", "telegram"}:
+        return [sys.executable, str(SOURCE_ROOT / "desktop_app.py"), "--tool", mode]
     mapping = {
         "engine": "main.py",
         "quality": "data_quality.py",
@@ -522,6 +534,7 @@ class TradingDesktop(tk.Tk):
         scrollbar.pack(side="right", fill="y")
 
         section_starts = {
+            "TRADING_DATA_DIR": "DATA & PENGALAMAN AI",
             "TRADING_SYMBOL": "TRADING & RISK",
             "TRADING_ATR_PERIOD": "INDIKATOR & ENTRY",
             "TRADING_BREAK_EVEN_ENABLED": "MANAJEMEN POSISI",
@@ -553,7 +566,15 @@ class TradingDesktop(tk.Tk):
             row += 1
         form.columnconfigure(1, weight=1)
         ttk.Button(form, text="Simpan Konfigurasi", command=self.save_settings, style="Primary.TButton").grid(
-            row=row, column=0, columnspan=2, sticky="w", padx=6, pady=18
+            row=row, column=0, sticky="w", padx=6, pady=18
+        )
+        data_buttons = ttk.Frame(form, style="Surface.TFrame")
+        data_buttons.grid(row=row, column=1, sticky="w", padx=6, pady=18)
+        ttk.Button(data_buttons, text="Import CSV Pengalaman", command=self.import_history).pack(
+            side="left", padx=(0, 8)
+        )
+        ttk.Button(data_buttons, text="Export CSV Pengalaman", command=self.export_history).pack(
+            side="left"
         )
         ttk.Label(
             form,
@@ -567,6 +588,51 @@ class TradingDesktop(tk.Tk):
             style="SurfaceMuted.TLabel",
             wraplength=780,
         ).grid(row=row + 1, column=0, columnspan=2, sticky="w", padx=6)
+
+    def import_history(self) -> None:
+        selected = filedialog.askopenfilenames(
+            title="Pilih CSV pengalaman yang akan diimport",
+            filetypes=(("CSV pengalaman", "*.csv"), ("Semua file", "*.*")),
+        )
+        if not selected:
+            return
+        try:
+            from history_store import import_learning_csv
+
+            results = import_learning_csv([Path(item) for item in selected], RUNTIME_ROOT)
+        except (OSError, ValueError) as exc:
+            messagebox.showerror("Import gagal", str(exc))
+            return
+        imported = sum(item["imported"] for item in results.values())
+        details = ", ".join(
+            f"{name}: {result['after']}" for name, result in results.items()
+        )
+        self.append_log(f"[desktop] Import histori selesai: {details}")
+        messagebox.showinfo(
+            "Import selesai",
+            f"{imported} baris unik ditambahkan.\n\n{details}\n\n"
+            "Restart bot agar seluruh pengalaman dibaca ulang.",
+        )
+
+    def export_history(self) -> None:
+        destination = filedialog.askdirectory(
+            title="Pilih lokasi penyimpanan export pengalaman"
+        )
+        if not destination:
+            return
+        try:
+            from history_store import export_learning_csv
+
+            exported = export_learning_csv(RUNTIME_ROOT, Path(destination))
+        except (OSError, ValueError) as exc:
+            messagebox.showerror("Export gagal", str(exc))
+            return
+        self.append_log(f"[desktop] CSV pengalaman diekspor ke {exported}")
+        messagebox.showinfo(
+            "Export selesai",
+            f"Pengalaman berhasil disimpan di:\n{exported}\n\n"
+            "File tidak memuat password MT5, token Telegram, atau konfigurasi rahasia.",
+        )
 
     def apply_preset(self, name: str) -> None:
         preset = TRADING_PRESETS.get(name)
