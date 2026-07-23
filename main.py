@@ -13,6 +13,7 @@ Hentikan dengan: Ctrl+C
 
 import sys
 import time
+import os
 from datetime import datetime
 import pandas as pd
 
@@ -216,6 +217,9 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
     if not spread_ok:
         print_status(f"Entry ditolak filter spread: {spread_reason}")
         return current_tickets
+    spread_atr_ratio = max(0.0, ask_price - bid_price) / atr_now if atr_now > 0 else float("inf")
+    high_spread_mode = spread_atr_ratio > config.SOFT_SPREAD_ATR_RATIO
+    very_high_spread_mode = spread_atr_ratio > config.VERY_HIGH_SPREAD_ATR_RATIO
 
     if not risk_manager.can_open_new_position(len(open_positions)):
         print_status(f"Slot posisi penuh ({len(open_positions)}/{config.MAX_OPEN_POSITIONS}).")
@@ -258,6 +262,12 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
     if performance_metrics.get("probe_mode"):
         learning_decision.risk_percent *= config.ROLLING_DEGRADED_RISK_MULTIPLIER
         learning_decision.reason += "; rolling performance melemah, mode probe konservatif"
+    if very_high_spread_mode:
+        learning_decision.risk_percent *= config.VERY_HIGH_SPREAD_RISK_MULTIPLIER
+        learning_decision.reason += f"; spread sangat tinggi {spread_atr_ratio:.1%} ATR, mode pasar tenang"
+    elif high_spread_mode:
+        learning_decision.risk_percent *= config.HIGH_SPREAD_RISK_MULTIPLIER
+        learning_decision.reason += f"; spread tinggi {spread_atr_ratio:.1%} ATR"
     combined_score = learning_decision.score
     if model_score is not None and config.AI_USE_MODEL_SCORE_AS_ENTRY_SCORE:
         model_quality = model_score
@@ -275,6 +285,10 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
     )
     if performance_metrics.get("probe_mode"):
         entry_threshold = min(1.0, entry_threshold + config.ROLLING_DEGRADED_ENTRY_THRESHOLD_BONUS)
+    if very_high_spread_mode:
+        entry_threshold = min(1.0, entry_threshold + config.VERY_HIGH_SPREAD_ENTRY_THRESHOLD_BONUS)
+    elif high_spread_mode:
+        entry_threshold = min(1.0, entry_threshold + config.HIGH_SPREAD_ENTRY_THRESHOLD_BONUS)
     ai_accepts = (
         (model_score is None or model_score >= config.AI_MIN_MODEL_CONFIDENCE_FOR_TRADE)
         and (model_expected_r is None or model_expected_r >= config.AI_MIN_EXPECTED_R_FOR_TRADE)
@@ -534,6 +548,16 @@ def main() -> None:
 
     try:
         while True:
+            stop_file = os.getenv("TRADING_STOP_FILE", "")
+            if stop_file and os.path.exists(stop_file):
+                try:
+                    os.remove(stop_file)
+                except OSError:
+                    pass
+                print("Bot dihentikan dari aplikasi desktop.")
+                trade_logger.log_system_event("bot_stop", "Dihentikan dari aplikasi desktop")
+                notifier.notify_bot_stopped("Dihentikan dari aplikasi desktop")
+                break
             # Baseline hanya berubah saat tanggal berganti dan tetap sama setelah restart.
             account = mt5_connector.get_account_info()
             if account:

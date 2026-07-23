@@ -1,0 +1,93 @@
+Requirement already satisfied: MetaTrader5 in .\.venv\Lib\site-packages (from -r C:\trading\requirements.txt (line 1)) (5.0.5735)
+Requirement already satisfied: pandas in .\.venv\Lib\site-packages (from -r C:\trading\requirements.txt (line 2)) (3.0.3)
+Requirement already satisfied: numpy in .\.venv\Lib\site-packages (from -r C:\trading\requirements.txt (line 3)) (2.5.1)
+Requirement already satisfied: requests in .\.venv\Lib\site-packages (from -r C:\trading\requirements.txt (line 4)) (2.34.2)
+Requirement already satisfied: scikit-learn in .\.venv\Lib\site-packages (from -r C:\trading\requirements.txt (line 5)) (1.9.0)
+Requirement already satisfied: joblib in .\.venv\Lib\site-packages (from -r C:\trading\requirements.txt (line 6)) (1.5.3)
+Requirement already satisfied: pyinstaller in .\.venv\Lib\site-packages (from -r requirements-desktop.txt (line 2)) (6.21.0)
+Requirement already satisfied: python-dateutil>=2.8.2 in .\.venv\Lib\site-packages (from pandas->-r C:\trading\requirements.txt (line 2)) (2.9.0.post0)
+Requirement already satisfied: tzdata in .\.venv\Lib\site-packages (from pandas->-r C:\trading\requirements.txt (line 2)) (2026.3)
+Requirement already satisfied: charset_normalizer<4,>=2 in .\.venv\Lib\site-packages (from requests->-r C:\trading\requirements.txt (line 4)) (3.4.9)
+Requirement already satisfied: idna<4,>=2.5 in .\.venv\Lib\site-packages (from requests->-r C:\trading\requirements.txt (line 4)) (3.18)
+Requirement already satisfied: urllib3<3,>=1.26 in .\.venv\Lib\site-packages (from requests->-r C:\trading\requirements.txt (line 4)) (2.7.0)
+Requirement already satisfied: certifi>=2023.5.7 in .\.venv\Lib\site-packages (from requests->-r C:\trading\requirements.txt (line 4)) (2026.6.17)
+Requirement already satisfied: scipy>=1.10.0 in .\.venv\Lib\site-packages (from scikit-learn->-r C:\trading\requirements.txt (line 5)) (1.18.0)
+Requirement already satisfied: narwhals>=2.0.1 in .\.venv\Lib\site-packages (from scikit-learn->-r C:\trading\requirements.txt (line 5)) (2.24.0)
+Requirement already satisfied: threadpoolctl>=3.5.0 in .\.venv\Lib\site-packages (from scikit-learn->-r C:\trading\requirements.txt (line 5)) (3.6.0)
+Requirement already satisfied: altgraph in .\.venv\Lib\site-packages (from pyinstaller->-r requirements-desktop.txt (line 2)) (0.17.5)
+Requirement already satisfied: packaging>=22.0 in .\.venv\Lib\site-packages (from pyinstaller->-r requirements-desktop.txt (line 2)) (26.2)
+Requirement already satisfied: pefile>=2022.5.30 in .\.venv\Lib\site-packages (from pyinstaller->-r requirements-desktop.txt (line 2)) (2024.8.26)
+Requirement already satisfied: pyinstaller-hooks-contrib>=2026.6 in .\.venv\Lib\site-packages (from pyinstaller->-r requirements-desktop.txt (line 2)) (2026.6)
+Requirement already satisfied: pywin32-ctypes>=0.2.1 in .\.venv\Lib\site-packages (from pyinstaller->-r requirements-desktop.txt (line 2)) (0.2.3)
+Requirement already satisfied: setuptools>=42.0.0 in .\.venv\Lib\site-packages (from pyinstaller->-r requirements-desktop.txt (line 2)) (83.0.0)
+Requirement already satisfied: six>=1.5 in .\.venv\Lib\site-packages (from python-dateutil>=2.8.2->pandas->-r C:\trading\requirements.txt (line 2)) (1.17.0)
+
+Build selesai: C:\trading\AITradingDesktop.exe
+Inno Setup 6 Command-Line Compiler
+Copyright (C) 1997-2026 Jordan Russell. All rights reserved.
+Portions Copyright (C) 2000-2026 Martijn Laan. All rights reserved.
+Portions Copyright (C) 2001-2004 Alex Yackimoff. All rights reserved.
+https://www.innosetup.com
+
+Compiler engine version: Inno Setup 6.7.3
+Non-commercial use only
+
+Preprocessing
+   Reading file: C:\Users\USER\AppData\Local\Programs\Inno Setup 6\ISPPBuiltins.iss
+Parsing [Setup] section, line 7
+Parsing [Setup] section, line 8
+Parsing [Setup] section, line 9
+Parsing [Setup] section, line 10
+Parsing [Setup] section, line 11
+Parsing [Setup] section, line 12
+Parsing [Setup] section, line 13
+Parsing [Setup] section, line 14
+Parsing [Setup] section, line 15
+Parsing [Setup] section, line 16
+Parsing [Setup] section, line 17
+Parsing [Setup] section, line 18
+Parsing [Setup] section, line 19
+Parsing [Setup] section, line 20
+Parsing [Setup] section, line 21
+Parsing [Setup] section, line 22
+Parsing [Setup] section, line 23
+Parsing [Setup] section, line 24
+Parsing [Setup] section, line 25
+Parsing [Setup] section, line 26
+Reading file (WizardImageFile)
+Reading file (WizardSmallImageFile)
+Preparing Setup program executable
+   Verification successful
+   Updating icons (Setup.e32)
+   Updating version info (Setup.e32)
+Determining language code pages
+Parsing [Languages] section, line 29
+   Reading file: C:\Users\USER\AppData\Local\Programs\Inno Setup 6\Default.isl
+   Messages in script file
+Reading default messages from Default.isl
+Parsing [Languages] section, line 29
+   Reading file: C:\Users\USER\AppData\Local\Programs\Inno Setup 6\Default.isl
+Parsing [LangOptions], [Messages], and [CustomMessages] sections
+   Messages in script file
+Reading [Code] section
+Parsing [Tasks] section, line 32
+Parsing [Dirs] section, line 38
+Parsing [Icons] section, line 41
+Parsing [Icons] section, line 42
+Parsing [UninstallDelete] section, line 48
+Parsing [UninstallDelete] section, line 49
+Parsing [Run] section, line 45
+Parsing [Files] section, line 35
+Compiling [Code] section
+Creating setup files
+   Verification successful
+   Updating icons (Setup.exe)
+   Compressing: C:\trading\AITradingDesktop.exe
+   Compressing Setup program executable
+   Updating version info (Setup.exe)
+   Updating manifest (Setup.exe)
+
+
+Successful compile (15,703 sec). Resulting Setup program filename is:
+C:\trading\installer_output\AITradingDesktop-Setup-1.2.0.exe
+Installer selesai: C:\trading\installer_output\AITradingDesktop-Setup-1.2.0.exe

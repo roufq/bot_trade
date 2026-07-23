@@ -42,6 +42,11 @@ masuk `mode probe`: threshold entry dinaikkan 0,10 dan risiko target dipotong
 40%. Dengan demikian kill-switch tidak mengalami deadlock, tetapi bot juga
 tidak langsung kembali trading normal setelah performa negatif.
 
+Filter spread memiliki tiga tingkat. Spread sampai 20% ATR diproses normal;
+20--25% ATR menaikkan threshold 0,05 dan menurunkan target risiko 15%;
+25--35% ATR menaikkan threshold 0,10 dan menurunkan target risiko 35%.
+Spread di atas 35% ATR atau 50 points tetap ditolak.
+
 Setiap setup valid juga dicatat secara virtual ke `shadow_signal_log.csv`, baik
 yang diterima maupun ditolak AI. Hasil SL/TP virtual ini memungkinkan evaluasi
 apakah filter AI benar-benar menambah nilai tanpa mempertaruhkan uang pada
@@ -63,7 +68,22 @@ Ikuti [INSTALLATION.md](INSTALLATION.md) untuk setup MT5, keamanan kredensial,
 data AI, backtest, update repository, dan troubleshooting. Panduan notifikasi
 tersedia di [TELEGRAM_SETUP.md](TELEGRAM_SETUP.md).
 
+Pengguna yang menginginkan tombol Start/Stop dan form konfigurasi dapat
+menjalankan aplikasi desktop. Panduan source dan build EXE tersedia di
+[DESKTOP_SETUP.md](DESKTOP_SETUP.md).
+
+Paket untuk komputer tanpa Python dibuat sebagai
+`installer_output/AITradingDesktop-Setup-1.2.0.exe`. MetaTrader 5 tetap wajib
+terpasang dan login.
+
 ## Konfigurasi
+
+Aplikasi desktop menyediakan profil **Konservatif**, **Seimbang**, dan **Aktif**
+sebagai titik awal. Setiap pengguna dapat mengubah sendiri risiko, jumlah posisi,
+spread/ATR, periode EMA/RSI/ATR, SL dan TP berbasis ATR, jarak entry, rentang
+volatilitas, break-even, trailing stop, serta jam trading. Semua nilai divalidasi
+sebelum disimpan. Preset maupun konfigurasi manual tidak menjamin profit; proteksi
+risiko internal tetap aktif.
 
 Sesuaikan konfigurasi berikut:
 

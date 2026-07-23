@@ -9,3 +9,11 @@ bot.lock
 runtime_state.json
 runtime_state.json.tmp
 model_registry/
+build/
+dist/
+*.spec
+desktop.stop
+desktop_output.log
+desktop_preview.png
+AITradingDesktop.exe
+installer_output/

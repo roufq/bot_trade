@@ -7,6 +7,27 @@ mengubah kode inti di file lain.
 
 import os
 
+
+def _env_float(name: str, default: float) -> float:
+    try:
+        return float(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        return float(default)
+
+
+def _env_int(name: str, default: int) -> int:
+    try:
+        return int(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        return int(default)
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
 # =========================================================
 # KONEKSI MT5
 # =========================================================
@@ -20,34 +41,34 @@ MT5_PATH = os.getenv("TRADING_MT5_PATH", "")
 # =========================================================
 # INSTRUMEN & TIMEFRAME
 # =========================================================
-SYMBOL = "XAUUSD.vx"
+SYMBOL = os.getenv("TRADING_SYMBOL", "XAUUSD.vx")
 TF_TREND = "M1"      # Tren diambil dari M1 untuk hyper scalping
 TF_ENTRY = "M1"      # Entry eksekusi juga di M1
 
 # =========================================================
 # PARAMETER INDIKATOR
 # =========================================================
-EMA_TREND_FAST = 20    # EMA cepat untuk filter tren M1
-EMA_TREND_SLOW = 50    # EMA lambat untuk filter tren M1
-EMA_ENTRY_FAST = 5     # EMA entry sangat sensitif untuk M1
-EMA_ENTRY_SLOW = 13    # EMA entry kecil untuk scalping
-RSI_PERIOD = 14        # RSI tetap 14 untuk respons yang wajar di M1
-RSI_BUY_MIN = 55       # Momentum Buy harus sedikit lebih kuat
-RSI_BUY_MAX = 100      # Bebas tanpa batas
-RSI_SELL_MIN = 0       # Bebas tanpa batas
-RSI_SELL_MAX = 45      # Momentum Sell harus sedikit lebih rendah
-ATR_PERIOD = 14
+EMA_TREND_FAST = _env_int("TRADING_EMA_TREND_FAST", 20)
+EMA_TREND_SLOW = _env_int("TRADING_EMA_TREND_SLOW", 50)
+EMA_ENTRY_FAST = _env_int("TRADING_EMA_ENTRY_FAST", 5)
+EMA_ENTRY_SLOW = _env_int("TRADING_EMA_ENTRY_SLOW", 13)
+RSI_PERIOD = _env_int("TRADING_RSI_PERIOD", 14)
+RSI_BUY_MIN = _env_float("TRADING_RSI_BUY_MIN", 55)
+RSI_BUY_MAX = _env_float("TRADING_RSI_BUY_MAX", 100)
+RSI_SELL_MIN = _env_float("TRADING_RSI_SELL_MIN", 0)
+RSI_SELL_MAX = _env_float("TRADING_RSI_SELL_MAX", 45)
+ATR_PERIOD = _env_int("TRADING_ATR_PERIOD", 14)
 
 # =========================================================
 # MANAJEMEN RISIKO
 # =========================================================
-RISK_PERCENT_PER_TRADE = 0.50     # Risiko lebih kecil per trade untuk hyper scalping
+RISK_PERCENT_PER_TRADE = _env_float("TRADING_RISK_PERCENT", 0.50)
 MAX_ACTUAL_RISK_PERCENT_PER_TRADE = 1.0  # toleransi lot minimum broker; jangan dilewati
-MAX_OPEN_POSITIONS = 3            # batasi konsentrasi posisi pada satu simbol
-MAX_POSITIONS_PER_DIRECTION = 2
-MIN_ENTRY_DISTANCE_ATR = 0.50
+MAX_OPEN_POSITIONS = _env_int("TRADING_MAX_OPEN_POSITIONS", 3)
+MAX_POSITIONS_PER_DIRECTION = _env_int("TRADING_MAX_POSITIONS_PER_DIRECTION", 2)
+MIN_ENTRY_DISTANCE_ATR = _env_float("TRADING_MIN_ENTRY_DISTANCE_ATR", 0.50)
 ALLOW_ADD_TO_LOSING_POSITION = False
-MAX_DAILY_DRAWDOWN_PERCENT = 5.0  # circuit breaker harian
+MAX_DAILY_DRAWDOWN_PERCENT = _env_float("TRADING_MAX_DAILY_DRAWDOWN_PERCENT", 5.0)
 MAX_TOTAL_OPEN_RISK_PERCENT = 2.0 # batas seluruh risiko terbuka
 MAX_CONSECUTIVE_LOSSES = 3
 LOSS_STREAK_COOLDOWN_MINUTES = 10
@@ -68,8 +89,8 @@ OVERSIZED_LOSS_COOLDOWN_MINUTES = 10
 MAX_ORDER_DEVIATION_POINTS = 20
 MAX_CONSECUTIVE_ORDER_ERRORS = 3
 ORDER_ERROR_COOLDOWN_MINUTES = 15
-SL_ATR_MULTIPLIER = 1.2         # SL lebih ketat untuk M1
-TP_ATR_MULTIPLIER = 1.8         # TP lebih kecil namun masih menjaga reward
+SL_ATR_MULTIPLIER = _env_float("TRADING_SL_ATR_MULTIPLIER", 1.2)
+TP_ATR_MULTIPLIER = _env_float("TRADING_TP_ATR_MULTIPLIER", 1.8)
 
 # =========================================================
 # MODE AGRESIF -- entry lebih sering mengikuti tren yang sedang berlangsung,
@@ -92,13 +113,19 @@ MIN_ENTRY_ATR_MULTIPLIER = 0.15  # Lebih ketat untuk mencegah masuk terlalu seri
 # =========================================================
 # FILTER EKSEKUSI & PASAR
 # =========================================================
-MAX_SPREAD_POINTS = 50.0
-MAX_SPREAD_ATR_RATIO = 0.20
+MAX_SPREAD_POINTS = _env_float("TRADING_MAX_SPREAD_POINTS", 50.0)
+SOFT_SPREAD_ATR_RATIO = 0.20
+VERY_HIGH_SPREAD_ATR_RATIO = 0.25
+MAX_SPREAD_ATR_RATIO = _env_float("TRADING_MAX_SPREAD_ATR_RATIO", 0.35)
+HIGH_SPREAD_RISK_MULTIPLIER = 0.85
+HIGH_SPREAD_ENTRY_THRESHOLD_BONUS = 0.05
+VERY_HIGH_SPREAD_RISK_MULTIPLIER = 0.65
+VERY_HIGH_SPREAD_ENTRY_THRESHOLD_BONUS = 0.10
 MAX_TICK_AGE_SECONDS = 10
 MIN_FREE_MARGIN_AFTER_ORDER_PERCENT = 50.0
 VOLATILITY_FILTER_ENABLED = True
-MIN_ATR_TO_MEDIAN_RATIO = 0.50
-MAX_ATR_TO_MEDIAN_RATIO = 2.50
+MIN_ATR_TO_MEDIAN_RATIO = _env_float("TRADING_MIN_ATR_TO_MEDIAN_RATIO", 0.50)
+MAX_ATR_TO_MEDIAN_RATIO = _env_float("TRADING_MAX_ATR_TO_MEDIAN_RATIO", 2.50)
 NEWS_BLACKOUT_WINDOWS = [
     value.strip() for value in os.getenv("TRADING_NEWS_BLACKOUT_WINDOWS", "").split(",")
     if value.strip()
@@ -113,18 +140,18 @@ NEWS_REFRESH_SECONDS = 300
 # =========================================================
 # PENGELOLAAN POSISI
 # =========================================================
-BREAK_EVEN_ENABLED = True
-BREAK_EVEN_TRIGGER_ATR = 1.0
-BREAK_EVEN_OFFSET_POINTS = 2.0
-TRAILING_STOP_ENABLED = True
-TRAILING_TRIGGER_ATR = 1.5
-TRAILING_DISTANCE_ATR = 0.8
+BREAK_EVEN_ENABLED = _env_bool("TRADING_BREAK_EVEN_ENABLED", True)
+BREAK_EVEN_TRIGGER_ATR = _env_float("TRADING_BREAK_EVEN_TRIGGER_ATR", 1.0)
+BREAK_EVEN_OFFSET_POINTS = _env_float("TRADING_BREAK_EVEN_OFFSET_POINTS", 2.0)
+TRAILING_STOP_ENABLED = _env_bool("TRADING_TRAILING_STOP_ENABLED", True)
+TRAILING_TRIGGER_ATR = _env_float("TRADING_TRAILING_TRIGGER_ATR", 1.5)
+TRAILING_DISTANCE_ATR = _env_float("TRADING_TRAILING_DISTANCE_ATR", 0.8)
 
 # =========================================================
 # JAM TRADING (WIB, adjustable)
 # =========================================================
-TRADING_HOUR_START = 0    # 0 = mulai jam 00:00 (24 jam penuh)
-TRADING_HOUR_END = 24     # 24 = sampai akhir hari (24 jam penuh)
+TRADING_HOUR_START = _env_int("TRADING_HOUR_START", 0)
+TRADING_HOUR_END = _env_int("TRADING_HOUR_END", 24)
 
 # =========================================================
 # SIKLUS & LOGGING

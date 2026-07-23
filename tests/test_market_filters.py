@@ -32,6 +32,15 @@ class MarketFilterTests(unittest.TestCase):
             self.assertTrue(market_filters.check_spread(100.20, 100.00, 0.01, 2.0)[0])
             self.assertFalse(market_filters.check_spread(100.50, 100.00, 0.01, 2.0)[0])
 
+    def test_spread_between_twenty_and_twenty_five_percent_is_allowed(self):
+        with patch.object(market_filters.config, "MAX_SPREAD_ATR_RATIO", 0.25):
+            self.assertTrue(market_filters.check_spread(100.23, 100.00, 0.01, 1.0)[0])
+
+    def test_spread_below_thirty_five_percent_is_available_for_quiet_market_mode(self):
+        with patch.object(market_filters.config, "MAX_SPREAD_ATR_RATIO", 0.35):
+            self.assertTrue(market_filters.check_spread(100.32, 100.00, 0.01, 1.0)[0])
+            self.assertFalse(market_filters.check_spread(100.36, 100.00, 0.01, 1.0)[0])
+
     def test_manual_news_blackout(self):
         with patch.object(market_filters.config, "NEWS_BLACKOUT_WINDOWS", ["13:25-13:40"]):
             self.assertTrue(market_filters.in_news_blackout(datetime(2026, 7, 21, 13, 30))[0])

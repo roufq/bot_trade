@@ -209,6 +209,16 @@ mendapatkan Chat ID, menyimpan token permanen, sampai tes pesan.
 
 Telegram bersifat opsional. Bot tetap dapat berjalan tanpa Telegram.
 
+## Alternatif paling mudah: installer desktop
+
+Jika menerima file `AITradingDesktop-Setup-1.2.0.exe`, pengguna tidak perlu
+memasang Python, Git, virtual environment, atau dependency pada langkah 1--6.
+Pengguna tetap wajib memasang MetaTrader 5.
+
+Jalankan installer, buka aplikasi dari Start Menu, isi tab Konfigurasi, lakukan
+Tes MT5, lalu klik Start Bot. Panduan lengkap tersedia di
+[DESKTOP_SETUP.md](DESKTOP_SETUP.md).
+
 ## 11. Jalankan pemeriksaan project
 
 ```powershell
@@ -267,6 +277,10 @@ Cooldown M1 yang digunakan:
 Ketika performa rolling melemah, bot berhenti 10 menit lalu masuk **mode
 probe**. Dalam mode ini threshold entry lebih tinggi dan target risiko
 dipotong. Bot tidak terkunci selamanya.
+
+Spread 20--25% ATR menggunakan mode biaya tinggi. Spread 25--35% ATR memakai
+mode pasar tenang dengan threshold lebih tinggi dan target risiko lebih kecil.
+Spread di atas 35% ATR atau 50 points tetap ditolak.
 
 ## 14. File data lokal
 
