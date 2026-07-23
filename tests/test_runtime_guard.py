@@ -3,6 +3,7 @@ import tempfile
 from pathlib import Path
 import unittest
 from unittest.mock import patch
+from datetime import datetime
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -27,6 +28,17 @@ class RuntimeGuardTests(unittest.TestCase):
             with patch.object(runtime_guard.config, "RUNTIME_STATE_FILE", path):
                 runtime_guard.save_tracked_tickets({3, 7})
                 self.assertEqual(runtime_guard.get_tracked_tickets(), {3, 7})
+
+    def test_daily_equity_baseline_survives_restart_and_resets_next_day(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = str(Path(tmpdir) / "state.json")
+            with patch.object(runtime_guard.config, "RUNTIME_STATE_FILE", path):
+                first = runtime_guard.get_daily_start_equity(300.0, datetime(2026, 7, 22, 8))
+                restarted = runtime_guard.get_daily_start_equity(290.0, datetime(2026, 7, 22, 12))
+                next_day = runtime_guard.get_daily_start_equity(295.0, datetime(2026, 7, 23, 1))
+                self.assertEqual(first, 300.0)
+                self.assertEqual(restarted, 300.0)
+                self.assertEqual(next_day, 295.0)
 
 
 if __name__ == "__main__":

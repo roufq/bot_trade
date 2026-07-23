@@ -10,6 +10,9 @@ import ai_trader
 
 
 class TrainingPreparationTests(unittest.TestCase):
+    def test_direction_identity_is_not_a_model_feature(self):
+        self.assertNotIn("signal_binary", ai_trader.FEATURE_COLUMNS)
+
     def test_entry_sl_tp_survive_merge_suffixes(self):
         entry = {column: 0.0 for column in [
             "h1_ema_gap", "h1_rsi", "h1_atr", "m15_ema_gap", "m15_rsi",
@@ -21,6 +24,7 @@ class TrainingPreparationTests(unittest.TestCase):
             "timestamp": "2026-07-21T10:00:00", "order_id": "1",
             "position_ticket": "10", "signal": "buy", "entry_time": "2026-07-21T10:00:00",
             "entry_price": 100.0, "sl_price": 99.0, "tp_price": 102.0,
+            "risk_amount": 1.0,
         })
         closed = {
             "timestamp": "2026-07-21T10:05:00", "order_id": "1", "ticket": "10",
@@ -32,6 +36,7 @@ class TrainingPreparationTests(unittest.TestCase):
         self.assertEqual(len(prepared), 1)
         self.assertEqual(prepared.iloc[0]["sl_distance"], 1.0)
         self.assertEqual(prepared.iloc[0]["tp_distance"], 2.0)
+        self.assertEqual(prepared.iloc[0]["r_multiple"], 2.0)
 
 
 if __name__ == "__main__":

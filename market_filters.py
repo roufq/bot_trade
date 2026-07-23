@@ -67,20 +67,29 @@ def recent_trade_guard(df_closed: pd.DataFrame, now: datetime | None = None) -> 
     df = df.dropna(subset=["profit", "exit_time"]).sort_values("exit_time")
     if df.empty:
         return True, ""
-    latest = df.iloc[-1]
-    cooldown = config.COOLDOWN_AFTER_LOSS_SECONDS if latest["profit"] < 0 else config.COOLDOWN_AFTER_WIN_SECONDS
-    resume_at = latest["exit_time"].to_pydatetime() + timedelta(seconds=cooldown)
-    if now < resume_at:
-        return False, f"cooldown sampai {resume_at:%H:%M:%S}"
-
     loss_streak = 0
     for value in reversed(df["profit"].tolist()):
         if value < 0:
             loss_streak += 1
         else:
             break
+    latest = df.iloc[-1]
+    if latest["profit"] >= 0:
+        cooldown_seconds = config.COOLDOWN_AFTER_WIN_SECONDS
+        cooldown_label = "setelah profit"
+    elif loss_streak >= config.MAX_CONSECUTIVE_LOSSES:
+        cooldown_seconds = config.LOSS_STREAK_COOLDOWN_MINUTES * 60
+        cooldown_label = f"loss streak {loss_streak}"
+    elif loss_streak == 2:
+        cooldown_seconds = config.SECOND_CONSECUTIVE_LOSS_COOLDOWN_SECONDS
+        cooldown_label = "loss streak 2"
+    else:
+        cooldown_seconds = config.COOLDOWN_AFTER_LOSS_SECONDS
+        cooldown_label = "setelah loss pertama"
+    resume_at = latest["exit_time"].to_pydatetime() + timedelta(seconds=cooldown_seconds)
+    if now < resume_at:
+        return False, f"{cooldown_label}, cooldown sampai {resume_at:%H:%M:%S}"
+
     if loss_streak >= config.MAX_CONSECUTIVE_LOSSES:
-        streak_resume = latest["exit_time"].to_pydatetime() + timedelta(minutes=config.LOSS_STREAK_COOLDOWN_MINUTES)
-        if now < streak_resume:
-            return False, f"loss streak {loss_streak}, jeda sampai {streak_resume:%H:%M:%S}"
+        return True, f"loss streak {loss_streak}, cooldown selesai"
     return True, ""

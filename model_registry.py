@@ -17,6 +17,12 @@ def promote(model, metrics: dict) -> tuple[bool, str]:
         return False, f"AUC {auc:.3f} di bawah {config.AI_MODEL_MIN_AUC:.3f}"
     if brier > config.AI_MODEL_MAX_BRIER:
         return False, f"Brier {brier:.3f} di atas {config.AI_MODEL_MAX_BRIER:.3f}"
+    r_mae = float(metrics.get("r_mae", float("inf")))
+    selected_actual_r = float(metrics.get("selected_actual_r", float("-inf")))
+    if r_mae > config.AI_MODEL_MAX_R_MAE:
+        return False, f"Expected-R MAE {r_mae:.3f} di atas {config.AI_MODEL_MAX_R_MAE:.3f}"
+    if selected_actual_r < config.AI_MODEL_MIN_SELECTED_ACTUAL_R:
+        return False, f"Actual R terpilih {selected_actual_r:+.3f} belum positif"
 
     os.makedirs(config.AI_MODEL_REGISTRY_DIR, exist_ok=True)
     version = datetime.now().strftime("%Y%m%d_%H%M%S")

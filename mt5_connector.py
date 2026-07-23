@@ -304,7 +304,8 @@ def get_position_ticket_from_deal(
 
 
 def send_market_order(symbol: str, order_type: str, lot_size: float,
-                       sl_price: float, tp_price: float, comment: str = "auto-bot") -> dict:
+                       sl_price: float, tp_price: float, comment: str = "auto-bot",
+                       reference_price: float | None = None) -> dict:
     """
     Mengirim order market buy/sell dengan SL/TP. Otomatis mencoba beberapa
     filling mode (FOK, IOC, RETURN) kalau mode pertama ditolak broker
@@ -341,6 +342,19 @@ def send_market_order(symbol: str, order_type: str, lot_size: float,
     candidates = list(dict.fromkeys(candidates))
 
     price = tick.ask if order_type == "buy" else tick.bid
+    # Harga dapat bergerak selama analisis. Pertahankan jarak risiko terhadap
+    # quote terbaru yang benar-benar dikirim ke broker, bukan quote lama.
+    if reference_price is not None and reference_price > 0:
+        sl_distance = abs(float(reference_price) - float(sl_price))
+        tp_distance = abs(float(tp_price) - float(reference_price))
+        if order_type == "buy":
+            sl_price, tp_price = price - sl_distance, price + tp_distance
+        else:
+            sl_price, tp_price = price + sl_distance, price - tp_distance
+        tick_size = float(getattr(sym_info, "trade_tick_size", 0.0) or 0.0)
+        if tick_size > 0:
+            sl_price = round(round(sl_price / tick_size) * tick_size, 8)
+            tp_price = round(round(tp_price / tick_size) * tick_size, 8)
     mt5_order_type = mt5.ORDER_TYPE_BUY if order_type == "buy" else mt5.ORDER_TYPE_SELL
 
     last_error = None
@@ -353,7 +367,7 @@ def send_market_order(symbol: str, order_type: str, lot_size: float,
             "price": price,
             "sl": sl_price,
             "tp": tp_price,
-            "deviation": 20,
+            "deviation": config.MAX_ORDER_DEVIATION_POINTS,
             "magic": 234000,
             "comment": comment,
             "type_time": mt5.ORDER_TIME_GTC,
@@ -383,6 +397,9 @@ def send_market_order(symbol: str, order_type: str, lot_size: float,
                 "deal_id": getattr(result, "deal", None),
                 "price": result.price,
                 "volume": result.volume,
+                "requested_price": price,
+                "sl_price": sl_price,
+                "tp_price": tp_price,
             }
 
         last_error = f"retcode={result.retcode}, comment={result.comment}"

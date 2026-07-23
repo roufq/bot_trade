@@ -14,6 +14,39 @@ otomatis di MetaTrader 5.
   live, mencakup berbagai kondisi pasar (trending & sideways).
 - Tersedia backtest sederhana, tetapi hasilnya bukan bukti strategi akan profit.
 
+## Cara AI belajar
+
+Bot memakai dua lapisan pembelajaran. Learner adaptif menghitung win rate,
+profit factor, expectancy uang, dan hasil rata-rata dalam satuan `R` (profit
+dibagi risiko awal). Statistik dipisahkan menurut jenis setup, tetapi tidak
+menurut arah buy/sell, lalu dibaurkan dengan statistik global agar sampel kecil
+tidak membuat bot terlalu percaya diri. Identitas arah juga tidak menjadi fitur
+model: buy dan sell dinilai setara berdasarkan kondisi chart.
+
+Setelah minimal 50 closed trade valid, `python retrain_model.py` melatih model
+klasifikasi probabilitas profit sekaligus model regresi expected `R`. Kandidat
+model hanya dipakai jika lolos evaluasi out-of-sample untuk AUC, Brier score,
+error expected-R, dan actual-R sinyal yang dipilih. Probabilitas tinggi saja
+tidak cukup apabila expected-R di bawah batas.
+
+Baseline drawdown harian disimpan di `runtime_state.json`, sehingga restart bot
+tidak mereset batas kerugian hari tersebut.
+
+Cooldown bersifat progresif untuk timeframe M1: tanpa jeda setelah profit,
+60 detik setelah loss pertama, 3 menit setelah loss kedua, dan 10 menit mulai
+loss ketiga. Tujuannya menjaga peluang entry tanpa menghapus proteksi ketika
+kondisi pasar berulang kali tidak cocok.
+
+Jika profit factor atau expectancy rolling melemah, bot berhenti 10 menit lalu
+masuk `mode probe`: threshold entry dinaikkan 0,10 dan risiko target dipotong
+40%. Dengan demikian kill-switch tidak mengalami deadlock, tetapi bot juga
+tidak langsung kembali trading normal setelah performa negatif.
+
+Setiap setup valid juga dicatat secara virtual ke `shadow_signal_log.csv`, baik
+yang diterima maupun ditolak AI. Hasil SL/TP virtual ini memungkinkan evaluasi
+apakah filter AI benar-benar menambah nilai tanpa mempertaruhkan uang pada
+sinyal yang ditolak.
+
 ## Instalasi cepat
 
 ```powershell

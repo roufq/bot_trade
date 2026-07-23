@@ -13,7 +13,7 @@ Hentikan dengan: Ctrl+C
 
 import sys
 import time
-from datetime import datetime, date
+from datetime import datetime
 import pandas as pd
 
 import config
@@ -31,6 +31,7 @@ import execution_guard
 import performance_guard
 import model_monitor
 import news_filter
+import shadow_tracker
 
 _last_evaluated_entry_bar = None
 _last_console_status = None
@@ -157,6 +158,7 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
     if df_h1 is None or df_m15 is None:
         trade_logger.log_system_event("error", "Gagal mengambil data candle")
         return current_tickets
+    shadow_tracker.resolve(df_m15)
 
     symbol_info = mt5_connector.get_symbol_info(config.SYMBOL)
     prices = mt5_connector.get_current_prices(config.SYMBOL)
@@ -191,7 +193,7 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
     if not guard_allowed:
         print_status(f"Entry dijeda: {guard_reason}")
         return current_tickets
-    performance_ok, performance_reason, _ = performance_guard.evaluate(closed_df)
+    performance_ok, performance_reason, performance_metrics = performance_guard.evaluate(closed_df)
     if not performance_ok:
         print_status(f"Entry dihentikan kill-switch: {performance_reason}")
         trade_logger.log_system_event("performance_kill_switch", performance_reason)
@@ -233,13 +235,18 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
 
     model_healthy, model_health_reason, _ = model_monitor.evaluate()
     model_score = None
+    model_expected_r = None
     if model_healthy:
-        model_score = ai_trader.predict_score(df_h1, df_m15, signal_result, spread_points=spread_points)
+        model_prediction = ai_trader.predict(df_h1, df_m15, signal_result, spread_points=spread_points)
+        if model_prediction is not None:
+            model_score = model_prediction.win_probability
+            model_expected_r = model_prediction.expected_r
     else:
         print_status(f"Model AI dinonaktifkan sementara: {model_health_reason}")
         trade_logger.log_system_event("ai_model_drift", model_health_reason)
     if model_score is not None:
-        print(f"[{datetime.now()}] AI model probability trade-profit: {model_score:.2f}")
+        expected_text = f", expected={model_expected_r:+.2f}R" if model_expected_r is not None else ""
+        print(f"[{datetime.now()}] AI model probability trade-profit: {model_score:.2f}{expected_text}")
     else:
         print(f"[{datetime.now()}] AI model belum tersedia atau tidak dapat memprediksi.")
         trade_logger.log_system_event("ai_model", "Model ML belum tersedia atau gagal dimuat")
@@ -247,13 +254,38 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
             print(f"[{datetime.now()}] AI_FORCE_MODEL_ONLY aktif, lewati entry karena model tidak tersedia.")
             return current_tickets
 
-    learning_decision = learner.decide(df_h1, df_m15, drawdown_pct)
+    learning_decision = learner.decide(df_h1, df_m15, drawdown_pct, signal_result=signal_result)
+    if performance_metrics.get("probe_mode"):
+        learning_decision.risk_percent *= config.ROLLING_DEGRADED_RISK_MULTIPLIER
+        learning_decision.reason += "; rolling performance melemah, mode probe konservatif"
     combined_score = learning_decision.score
     if model_score is not None and config.AI_USE_MODEL_SCORE_AS_ENTRY_SCORE:
+        model_quality = model_score
+        if model_expected_r is not None:
+            expected_r_quality = max(0.0, min(1.0, (model_expected_r + 1.0) / 2.0))
+            model_quality = 0.5 * model_score + 0.5 * expected_r_quality
         combined_score = (
-            config.AI_MODEL_ENTRY_WEIGHT * model_score
+            config.AI_MODEL_ENTRY_WEIGHT * model_quality
             + config.AI_LEARNER_ENTRY_WEIGHT * learning_decision.score
         )
+
+    entry_threshold = (
+        config.LEARNING_COLD_START_MIN_ENTRY_SCORE
+        if learning_decision.recent_trades == 0 else config.LEARNING_MIN_ENTRY_SCORE
+    )
+    if performance_metrics.get("probe_mode"):
+        entry_threshold = min(1.0, entry_threshold + config.ROLLING_DEGRADED_ENTRY_THRESHOLD_BONUS)
+    ai_accepts = (
+        (model_score is None or model_score >= config.AI_MIN_MODEL_CONFIDENCE_FOR_TRADE)
+        and (model_expected_r is None or model_expected_r >= config.AI_MIN_EXPECTED_R_FOR_TRADE)
+        and combined_score >= entry_threshold
+    )
+    shadow_tracker.record(
+        entry_bar_time, signal_result.signal, learner.infer_setup(signal_result.reason),
+        float(signal_result.entry_price or (ask_price if signal_result.signal == "buy" else bid_price)),
+        float(signal_result.atr_value or 0.0), model_score, model_expected_r,
+        learning_decision.average_r, "ai_accept" if ai_accepts else "ai_reject",
+    )
 
     if model_score is not None and model_score < config.AI_MIN_MODEL_CONFIDENCE_FOR_TRADE:
         print(
@@ -266,8 +298,15 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
         )
         return current_tickets
 
+    if model_expected_r is not None and model_expected_r < config.AI_MIN_EXPECTED_R_FOR_TRADE:
+        print(f"[{datetime.now()}] Entry ditolak: expected value {model_expected_r:+.2f}R < "
+              f"{config.AI_MIN_EXPECTED_R_FOR_TRADE:+.2f}R")
+        trade_logger.log_system_event("ai_expected_r_reject", f"expected_r={model_expected_r:+.3f}")
+        return current_tickets
+
     if model_score is not None:
-        if model_score >= config.AI_MIN_PROBA_ENTRY:
+        if (model_score >= config.AI_MIN_PROBA_ENTRY and
+                (model_expected_r is None or model_expected_r >= config.AI_HIGH_EXPECTED_R)):
             learning_decision.risk_percent *= config.AI_RISK_MULTIPLIER_HIGH_CONFIDENCE
             learning_decision.reason += "; model confidence tinggi"
         else:
@@ -288,14 +327,12 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
         f"score={learning_decision.score:.2f}, combined_score={combined_score:.2f}, "
         f"risk={learning_decision.risk_percent:.2f}%, "
         f"win_rate={learning_decision.win_rate:.2f}, loss_streak={learning_decision.loss_streak}, "
-        f"model_proba={model_score if model_score is not None else 'none'}",
+        f"learner_r={learning_decision.average_r:+.3f}, PF={learning_decision.profit_factor:.2f}, "
+        f"segment={learning_decision.segment}({learning_decision.segment_trades}), "
+        f"model_proba={model_score if model_score is not None else 'none'}, "
+        f"model_expected_r={model_expected_r if model_expected_r is not None else 'none'}",
     )
 
-    entry_threshold = (
-        config.LEARNING_COLD_START_MIN_ENTRY_SCORE
-        if learning_decision.recent_trades == 0
-        else config.LEARNING_MIN_ENTRY_SCORE
-    )
     if combined_score < entry_threshold:
         print(
             f"[{datetime.now()}] Entry ditolak: combined score {combined_score:.2f} di bawah threshold "
@@ -389,6 +426,7 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
         lot_size=order_plan.lot_size,
         sl_price=order_plan.sl_price,
         tp_price=order_plan.tp_price,
+        reference_price=real_entry_price,
     )
 
     if result["success"]:
@@ -410,11 +448,14 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
                 existing_tickets=current_tickets,
             )
         position_ticket = str(new_ticket) if new_ticket is not None else ""
+        effective_sl = float(result.get("sl_price", order_plan.sl_price))
+        effective_tp = float(result.get("tp_price", order_plan.tp_price))
+        broker_requested_price = float(result.get("requested_price", real_entry_price))
         point = float(symbol_info.get("point", symbol_info["trade_tick_size"]))
         adverse_slippage = (
-            result["price"] - real_entry_price
+            result["price"] - broker_requested_price
             if signal_result.signal == "buy"
-            else real_entry_price - result["price"]
+            else broker_requested_price - result["price"]
         )
         slippage_points = adverse_slippage / point if point > 0 else 0.0
 
@@ -425,8 +466,8 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
             lot_size=order_plan.lot_size,
             entry_time=entry_time,
             entry_price=result["price"],
-            sl_price=order_plan.sl_price,
-            tp_price=order_plan.tp_price,
+            sl_price=effective_sl,
+            tp_price=effective_tp,
             atr_value=signal_result.atr_value,
             risk_amount=order_plan.risk_amount,
             h1_ema_gap=features["h1_ema_gap"],
@@ -437,10 +478,12 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
             m15_atr=features["m15_atr"],
             trend_strength=features["trend_strength"],
             ai_score=model_score if model_score is not None else 0.0,
+            ai_expected_r=model_expected_r,
+            learner_expected_r=learning_decision.average_r,
             combined_score=combined_score,
             reason=signal_result.reason,
             signal_price=signal_result.entry_price or 0.0,
-            requested_price=real_entry_price,
+            requested_price=broker_requested_price,
             spread_points=spread_points,
             slippage_points=slippage_points,
             feature_values=features,
@@ -454,8 +497,8 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
             signal=signal_result.signal,
             lot_size=order_plan.lot_size,
             entry_price=result["price"],
-            sl_price=order_plan.sl_price,
-            tp_price=order_plan.tp_price,
+            sl_price=effective_sl,
+            tp_price=effective_tp,
         )
         # current_tickets is tracked by open position ticket numbers from MT5.
         # The return value of order_send is an order request id, not the position ticket.
@@ -484,19 +527,20 @@ def main() -> None:
     notifier.notify_bot_started()
 
     account = mt5_connector.get_account_info()
-    equity_start_of_day = account["equity"] if account else 0.0
-    current_day = date.today()
+    equity_now = account["equity"] if account else 0.0
+    equity_start_of_day = runtime_guard.get_daily_start_equity(equity_now)
     current_open_tickets = {p.ticket for p in mt5_connector.get_open_positions(config.SYMBOL)}
     open_tickets = current_open_tickets | runtime_guard.get_tracked_tickets()
 
     try:
         while True:
-            # Reset acuan equity harian jika sudah ganti hari
-            if date.today() != current_day:
-                current_day = date.today()
-                account = mt5_connector.get_account_info()
-                equity_start_of_day = account["equity"] if account else equity_start_of_day
-                trade_logger.log_system_event("new_day", f"equity_start={equity_start_of_day}")
+            # Baseline hanya berubah saat tanggal berganti dan tetap sama setelah restart.
+            account = mt5_connector.get_account_info()
+            if account:
+                persisted_daily_equity = runtime_guard.get_daily_start_equity(account["equity"])
+                if persisted_daily_equity != equity_start_of_day:
+                    equity_start_of_day = persisted_daily_equity
+                    trade_logger.log_system_event("new_day", f"equity_start={equity_start_of_day}")
 
             open_tickets = run_cycle(equity_start_of_day, open_tickets)
             runtime_guard.save_tracked_tickets(open_tickets)

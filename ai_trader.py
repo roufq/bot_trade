@@ -5,12 +5,13 @@ Menangani ekstraksi fitur entry, inferensi model, dan penyimpanan model.
 """
 
 import os
+from dataclasses import dataclass
 from typing import Optional
 
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 import config
 import mt5_connector
@@ -18,7 +19,6 @@ from indicators import add_all_indicators
 from strategy import TradeSignal
 
 FEATURE_COLUMNS = [
-    "signal_binary",
     "h1_ema_gap",
     "h1_rsi",
     "h1_atr",
@@ -41,8 +41,10 @@ FEATURE_COLUMNS = [
 ]
 
 
-def _normalize_signal(signal: str) -> int:
-    return 1 if signal == "buy" else 0
+@dataclass(frozen=True)
+class ModelPrediction:
+    win_probability: float
+    expected_r: float | None = None
 
 
 def extract_features(
@@ -90,7 +92,6 @@ def extract_features(
     atr_ratio = float(last_m15["atr"]) / float(last_h1["atr"]) if float(last_h1["atr"]) else 0.0
 
     features = {
-        "signal_binary": _normalize_signal(signal_result.signal),
         "h1_ema_gap": h1_ema_gap,
         "h1_rsi": float(last_h1["rsi"]),
         "h1_atr": float(last_h1["atr"]),
@@ -114,7 +115,7 @@ def extract_features(
     return features
 
 
-def _load_model() -> Optional[RandomForestClassifier]:
+def _load_model():
     if not os.path.exists(config.MODEL_FILE):
         return None
     try:
@@ -123,20 +124,32 @@ def _load_model() -> Optional[RandomForestClassifier]:
         return None
 
 
-def predict_score(
+def predict(
     df_h1: pd.DataFrame,
     df_m15: pd.DataFrame,
     signal_result: TradeSignal,
     spread_points: float = 0.0,
-) -> Optional[float]:
-    model = _load_model()
-    if model is None:
+) -> Optional[ModelPrediction]:
+    bundle = _load_model()
+    if bundle is None:
         return None
 
     features = extract_features(df_h1, df_m15, signal_result, spread_points=spread_points)
     x = pd.DataFrame([features])[FEATURE_COLUMNS]
-    proba = model.predict_proba(x)[0]
-    return float(proba[1])
+    classifier = bundle.get("classifier") if isinstance(bundle, dict) else bundle
+    regressor = bundle.get("regressor") if isinstance(bundle, dict) else None
+    proba = float(classifier.predict_proba(x)[0][1])
+    expected_r = float(regressor.predict(x)[0]) if regressor is not None else None
+    return ModelPrediction(proba, expected_r)
+
+
+def predict_score(
+    df_h1: pd.DataFrame, df_m15: pd.DataFrame, signal_result: TradeSignal,
+    spread_points: float = 0.0,
+) -> Optional[float]:
+    """Kompatibilitas model lama: kembalikan probabilitas profit."""
+    result = predict(df_h1, df_m15, signal_result, spread_points)
+    return result.win_probability if result else None
 
 
 def _prepare_dataframe_from_trade_log(df_trade: pd.DataFrame, df_closed: pd.DataFrame) -> pd.DataFrame:
@@ -183,7 +196,6 @@ def _prepare_dataframe_from_trade_log(df_trade: pd.DataFrame, df_closed: pd.Data
     elif "order_id" in merged.columns:
         merged = merged.drop_duplicates(subset=["order_id"], keep="first")
 
-    merged["signal_binary"] = merged["signal_entry"].map({"buy": 1, "sell": 0})
     merged["entry_hour"] = pd.to_datetime(merged["entry_time"]).dt.hour
     merged["weekday"] = pd.to_datetime(merged["entry_time"]).dt.weekday
     sl_column = "sl_price_entry" if "sl_price_entry" in merged.columns else "sl_price"
@@ -212,9 +224,16 @@ def _prepare_dataframe_from_trade_log(df_trade: pd.DataFrame, df_closed: pd.Data
         else:
             merged[optional] = merged[optional].fillna(0.0)
     merged["target"] = (merged["profit"] > 0).astype(int)
-    for column in FEATURE_COLUMNS + ["target"]:
+    risk_column = "risk_amount_entry" if "risk_amount_entry" in merged.columns else "risk_amount"
+    if risk_column not in merged.columns:
+        merged["r_multiple"] = np.nan
+    else:
+        planned_risk = pd.to_numeric(merged[risk_column], errors="coerce")
+        merged["r_multiple"] = pd.to_numeric(merged["profit"], errors="coerce") / planned_risk.where(planned_risk > 0)
+        merged["r_multiple"] = merged["r_multiple"].clip(-3.0, 5.0)
+    for column in FEATURE_COLUMNS + ["target", "r_multiple"]:
         merged[column] = pd.to_numeric(merged[column], errors="coerce")
-    return merged.dropna(subset=FEATURE_COLUMNS + ["target"])
+    return merged.dropna(subset=FEATURE_COLUMNS + ["target", "r_multiple"])
 
 
 def _create_model() -> RandomForestClassifier:
@@ -251,7 +270,7 @@ def train_model() -> None:
         return
 
     from sklearn.model_selection import RandomizedSearchCV, TimeSeriesSplit
-    from sklearn.metrics import accuracy_score, roc_auc_score, classification_report, brier_score_loss
+    from sklearn.metrics import accuracy_score, roc_auc_score, classification_report, brier_score_loss, mean_absolute_error
 
     param_grid = {
         "n_estimators": [100, 150, 200],
@@ -322,10 +341,21 @@ def train_model() -> None:
 
     y_pred = model_to_save.predict(X_test)
     y_proba = model_to_save.predict_proba(X_test)[:, 1]
+    regressor = RandomForestRegressor(
+        n_estimators=200, max_depth=8, min_samples_leaf=3,
+        random_state=42, n_jobs=-1,
+    )
+    regressor.fit(X_train, train["r_multiple"])
+    predicted_r = regressor.predict(X_test)
+    r_mae = float(mean_absolute_error(test["r_multiple"], predicted_r))
+    selected = predicted_r >= config.AI_MIN_EXPECTED_R_FOR_TRADE
+    selected_actual_r = float(test.loc[selected, "r_multiple"].mean()) if selected.any() else float("-inf")
 
     print(f"Akurasi: {accuracy_score(y_test, y_pred):.4f}")
     print(f"AUC: {roc_auc_score(y_test, y_proba):.4f}")
     print(f"Brier score: {brier_score_loss(y_test, y_proba):.4f} (lebih kecil lebih baik)")
+    print(f"Expected-R MAE: {r_mae:.4f}R")
+    print(f"Actual R sinyal terpilih: {selected_actual_r:+.4f}R ({int(selected.sum())} trade)")
     print(classification_report(y_test, y_pred))
 
     calibration_report = pd.DataFrame({"actual": y_test.to_numpy(), "probability": y_proba})
@@ -346,8 +376,12 @@ def train_model() -> None:
         "training_rows": int(len(train)),
         "test_rows": int(len(test)),
         "features": FEATURE_COLUMNS,
+        "r_mae": r_mae,
+        "selected_actual_r": selected_actual_r,
+        "selected_rows": int(selected.sum()),
     }
-    promoted, detail = model_registry.promote(model_to_save, metrics)
+    bundle = {"version": 2, "classifier": model_to_save, "regressor": regressor, "features": FEATURE_COLUMNS}
+    promoted, detail = model_registry.promote(bundle, metrics)
     if promoted:
         print(f"Model dipromosikan sebagai versi {detail} ke {config.MODEL_FILE}")
     else:

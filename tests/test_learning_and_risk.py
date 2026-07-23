@@ -12,6 +12,29 @@ import risk_manager
 
 
 class LearningQualityTests(unittest.TestCase):
+    def test_segment_is_setup_only_not_trade_direction(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        history = pd.DataFrame({
+            "profit": [1, -1, 2, -1, 1, 1], "risk_amount": [1] * 6,
+            "entry_signal": ["buy", "sell", "buy", "sell", "buy", "sell"],
+            "entry_reason": ["Momentum entry"] * 6,
+        })
+        with patch.object(learner, "_load_enriched_history", return_value=history), \
+             patch.object(learner, "estimate_market_score", return_value=.5):
+            decision = learner.decide(
+                pd.DataFrame(), pd.DataFrame(), 0,
+                SimpleNamespace(signal="sell", reason="Momentum entry"),
+            )
+        self.assertEqual(decision.segment, "momentum")
+        self.assertEqual(decision.segment_trades, 6)
+
+    def test_metrics_distinguish_profit_size_using_r_multiple(self):
+        df = pd.DataFrame({"profit": [0.1, 2.0, -1.0], "risk_amount": [1.0, 1.0, 1.0]})
+        metrics = learner.calculate_trade_metrics(df)
+        self.assertAlmostEqual(metrics["average_r"], 1.1 / 3.0)
+        self.assertAlmostEqual(metrics["profit_factor"], 2.1)
+
     def test_rejects_uniform_corrupt_history(self):
         df = pd.DataFrame({
             "timestamp": pd.date_range("2026-07-01", periods=60, freq="h").astype(str),

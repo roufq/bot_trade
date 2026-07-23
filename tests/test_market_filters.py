@@ -12,6 +12,19 @@ import market_filters
 
 
 class MarketFilterTests(unittest.TestCase):
+    def test_second_loss_uses_progressive_cooldown(self):
+        rows = pd.DataFrame({
+            "timestamp": ["2026-07-21T10:00:00", "2026-07-21T10:01:00"],
+            "exit_time": ["2026-07-21T10:00:00", "2026-07-21T10:01:00"],
+            "profit": [-1.0, -1.0],
+        })
+        with patch.object(market_filters.config, "SECOND_CONSECUTIVE_LOSS_COOLDOWN_SECONDS", 180):
+            blocked, reason = market_filters.recent_trade_guard(rows, datetime(2026, 7, 21, 10, 2))
+            allowed, _ = market_filters.recent_trade_guard(rows, datetime(2026, 7, 21, 10, 4, 1))
+        self.assertFalse(blocked)
+        self.assertIn("loss streak 2", reason)
+        self.assertTrue(allowed)
+
     def test_spread_guard(self):
         with patch.object(market_filters.config, "MAX_SPREAD_POINTS", 30), patch.object(
             market_filters.config, "MAX_SPREAD_ATR_RATIO", 0.2

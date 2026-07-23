@@ -29,6 +29,11 @@ class LearningDecision:
     loss_streak: int
     trend_strength: float
     recent_trades: int
+    profit_factor: float = 0.0
+    expectancy: float = 0.0
+    average_r: float = 0.0
+    segment: str = "global"
+    segment_trades: int = 0
 
 
 def validate_closed_trade_history(df: pd.DataFrame, min_trades: int | None = None) -> tuple[bool, str]:
@@ -82,6 +87,9 @@ def calculate_trade_metrics(df: pd.DataFrame) -> dict:
             "average_profit": 0.0,
             "average_loss": 0.0,
             "recent_trades": 0,
+            "profit_factor": 0.0,
+            "expectancy": 0.0,
+            "average_r": 0.0,
         }
 
     profit = df["profit"].astype(float)
@@ -90,6 +98,12 @@ def calculate_trade_metrics(df: pd.DataFrame) -> dict:
     win_rate = len(winners) / len(profit) if len(profit) > 0 else 0.0
     average_profit = winners.mean() if not winners.empty else 0.0
     average_loss = losers.mean() if not losers.empty else 0.0
+    gross_win = float(winners.sum())
+    gross_loss = abs(float(losers.sum()))
+    profit_factor = gross_win / gross_loss if gross_loss > 0 else (float("inf") if gross_win > 0 else 0.0)
+    risk = pd.to_numeric(df.get("risk_amount", pd.Series(index=df.index, dtype=float)), errors="coerce")
+    r_values = profit / risk.where(risk > 0)
+    average_r = float(r_values.replace([float("inf"), float("-inf")], pd.NA).dropna().mean()) if r_values.notna().any() else 0.0
 
     loss_streak = 0
     for value in reversed(profit.tolist()):
@@ -104,7 +118,55 @@ def calculate_trade_metrics(df: pd.DataFrame) -> dict:
         "average_profit": average_profit,
         "average_loss": average_loss,
         "recent_trades": len(profit),
+        "profit_factor": profit_factor,
+        "expectancy": float(profit.mean()),
+        "average_r": average_r,
     }
+
+
+def infer_setup(reason: str) -> str:
+    text = (reason or "").lower()
+    if "momentum" in text:
+        return "momentum"
+    if "continuation" in text or "pullback" in text:
+        return "continuation"
+    if "cross" in text:
+        return "crossover"
+    return "other"
+
+
+def _load_enriched_history() -> pd.DataFrame:
+    closed = load_recent_closed_trades()
+    if closed.empty or not os.path.exists(config.TRADE_LOG_FILE):
+        return closed
+    try:
+        entries = pd.read_csv(config.TRADE_LOG_FILE, low_memory=False)
+        entries["order_key"] = entries["order_id"].fillna("").astype(str).str.replace(r"\.0$", "", regex=True)
+        closed = closed.copy()
+        closed["order_key"] = closed["order_id"].fillna("").astype(str).str.replace(r"\.0$", "", regex=True)
+        columns = [column for column in ["order_key", "reason", "signal"] if column in entries]
+        enriched = closed.merge(entries[columns].drop_duplicates("order_key", keep="last"), on="order_key", how="left", suffixes=("", "_entry"))
+        enriched["entry_reason"] = enriched.get("reason_entry", enriched.get("reason", ""))
+        enriched["entry_signal"] = enriched.get("signal_entry", enriched.get("signal", ""))
+        return enriched
+    except (OSError, ValueError, KeyError, pd.errors.ParserError):
+        return closed
+
+
+def _blend_metrics(global_metrics: dict, segment_metrics: dict) -> dict:
+    count = segment_metrics["recent_trades"]
+    if count < config.LEARNING_SEGMENT_MIN_TRADES:
+        return global_metrics.copy()
+    weight = count / (count + config.LEARNING_SEGMENT_SHRINKAGE)
+    blended = global_metrics.copy()
+    for key in ("win_rate", "average_profit", "average_loss", "profit_factor", "expectancy", "average_r"):
+        global_value, segment_value = global_metrics[key], segment_metrics[key]
+        if global_value == float("inf") or segment_value == float("inf"):
+            continue
+        blended[key] = (1.0 - weight) * global_value + weight * segment_value
+    blended["loss_streak"] = segment_metrics["loss_streak"]
+    blended["recent_trades"] = global_metrics["recent_trades"]
+    return blended
 
 
 def estimate_trend_strength(df: pd.DataFrame, ema_fast: int, ema_slow: int) -> float:
@@ -152,13 +214,17 @@ def build_adaptive_risk_percent(
             reason_parts.append(
                 f"Loss streak {recent_metrics['loss_streak']} -> kurangi risiko"
             )
-        elif recent_metrics["win_rate"] >= config.LEARNING_HIGH_WINRATE_THRESHOLD:
+        elif (recent_metrics["win_rate"] >= config.LEARNING_HIGH_WINRATE_THRESHOLD
+              and recent_metrics["profit_factor"] >= 1.3 and recent_metrics["average_r"] > 0.2):
             risk *= config.LEARNING_WIN_STREAK_MULTIPLIER
             reason_parts.append(
                 f"Win rate tinggi {recent_metrics['win_rate']:.0%} -> tingkatkan risiko"
             )
         else:
             reason_parts.append(f"Win rate {recent_metrics['win_rate']:.0%}")
+        if recent_metrics["average_r"] <= 0 or recent_metrics["profit_factor"] < 1.0:
+            risk *= 0.70
+            reason_parts.append(f"expectancy lemah ({recent_metrics['average_r']:+.2f}R, PF {recent_metrics['profit_factor']:.2f})")
 
     if market_score >= config.LEARNING_STRONG_MARKET_THRESHOLD:
         risk *= config.LEARNING_STRONG_MARKET_MULTIPLIER
@@ -186,11 +252,10 @@ def compute_entry_score(recent_metrics: dict, market_score: float) -> float:
     if recent_metrics["recent_trades"] == 0:
         return float(market_score * 0.5 + 0.25)
 
-    score = (
-        0.4 * recent_metrics["win_rate"]
-        + 0.4 * market_score
-        + 0.2 * max(0.0, 1.0 - recent_metrics["loss_streak"] / config.LEARNING_MAX_LOSS_STREAK_FOR_SCORE)
-    )
+    r_quality = max(0.0, min(1.0, (recent_metrics["average_r"] + 1.0) / 2.0))
+    score = (0.25 * recent_metrics["win_rate"] + 0.30 * market_score
+             + 0.20 * max(0.0, 1.0 - recent_metrics["loss_streak"] / config.LEARNING_MAX_LOSS_STREAK_FOR_SCORE)
+             + 0.25 * r_quality)
     return float(max(0.0, min(1.0, score)))
 
 
@@ -198,9 +263,21 @@ def decide(
     df_h1: pd.DataFrame,
     df_m15: pd.DataFrame,
     current_drawdown_pct: float,
+    signal_result=None,
 ) -> LearningDecision:
-    recent_closed = load_recent_closed_trades()
-    metrics = calculate_trade_metrics(recent_closed)
+    recent_closed = _load_enriched_history()
+    global_metrics = calculate_trade_metrics(recent_closed)
+    setup = infer_setup(getattr(signal_result, "reason", ""))
+    signal = getattr(signal_result, "signal", "")
+    # Arah bukan reputasi historis yang boleh memblokir entry. Segmentasi
+    # belajar dari jenis setup yang sama untuk buy maupun sell.
+    segment = setup if signal else "global"
+    segment_closed = pd.DataFrame()
+    if not recent_closed.empty and {"entry_signal", "entry_reason"}.issubset(recent_closed.columns):
+        setup_series = recent_closed["entry_reason"].fillna("").map(infer_setup)
+        segment_closed = recent_closed[setup_series == setup]
+    segment_metrics = calculate_trade_metrics(segment_closed)
+    metrics = _blend_metrics(global_metrics, segment_metrics)
     market_score = estimate_market_score(df_h1, df_m15)
     risk_percent, reason = build_adaptive_risk_percent(
         equity=0.0,
@@ -221,4 +298,9 @@ def decide(
         loss_streak=metrics["loss_streak"],
         trend_strength=market_score,
         recent_trades=metrics["recent_trades"],
+        profit_factor=metrics["profit_factor"],
+        expectancy=metrics["expectancy"],
+        average_r=metrics["average_r"],
+        segment=segment,
+        segment_trades=segment_metrics["recent_trades"],
     )

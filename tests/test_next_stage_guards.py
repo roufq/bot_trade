@@ -41,10 +41,37 @@ class ExecutionGuardTests(unittest.TestCase):
 
 class PerformanceGuardTests(unittest.TestCase):
     def test_stops_negative_rolling_expectancy(self):
-        df = pd.DataFrame({"profit": [-1.0] * 10, "risk_amount": [1.0] * 10})
-        allowed, reason, _ = performance_guard.evaluate(df)
+        df = pd.DataFrame({
+            "profit": [-1.0] * 10, "risk_amount": [1.0] * 10,
+            "exit_time": ["2026-07-23T10:00:00"] * 10,
+        })
+        allowed, reason, _ = performance_guard.evaluate(df, datetime(2026, 7, 23, 10, 5))
         self.assertFalse(allowed)
-        self.assertTrue("profit factor" in reason or "expectancy" in reason)
+        self.assertIn("rolling melemah", reason)
+
+    def test_negative_rolling_enters_probe_mode_after_pause(self):
+        df = pd.DataFrame({
+            "profit": [-1.0] * 10, "risk_amount": [1.0] * 10,
+            "exit_time": ["2026-07-23T10:00:00"] * 10,
+        })
+        allowed, reason, metrics = performance_guard.evaluate(df, datetime(2026, 7, 23, 10, 11))
+        self.assertTrue(allowed)
+        self.assertIn("mode probe", reason)
+        self.assertTrue(metrics["probe_mode"])
+
+    def test_oversized_loss_only_blocks_for_cooldown(self):
+        from datetime import datetime
+        rows = pd.DataFrame({
+            "timestamp": ["2026-07-22T09:00:00"] * 10,
+            "exit_time": ["2026-07-22T09:00:00"] * 10,
+            "profit": [2.0] * 9 + [-2.0],
+            "risk_amount": [1.0] * 10,
+        })
+        blocked, _, _ = performance_guard.evaluate(rows, datetime(2026, 7, 22, 9, 5))
+        allowed, _, metrics = performance_guard.evaluate(rows, datetime(2026, 7, 22, 10, 0))
+        self.assertFalse(blocked)
+        self.assertTrue(allowed)
+        self.assertTrue(metrics["oversized_loss_cooldown_complete"])
 
 
 class OrderCircuitTests(unittest.TestCase):

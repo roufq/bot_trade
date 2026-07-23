@@ -49,7 +49,10 @@ class SingleInstanceLock:
 
 
 def load_state() -> dict:
-    default = {"equity_peak": 0.0, "week_key": "", "week_start_equity": 0.0}
+    default = {
+        "equity_peak": 0.0, "week_key": "", "week_start_equity": 0.0,
+        "day_key": "", "day_start_equity": 0.0,
+    }
     if not os.path.exists(config.RUNTIME_STATE_FILE):
         return default
     try:
@@ -79,6 +82,18 @@ def update_equity_state(equity: float, now: datetime | None = None) -> tuple[dic
     peak_dd = ((state["equity_peak"] - equity) / state["equity_peak"] * 100.0) if state["equity_peak"] > 0 else 0.0
     save_state(state)
     return state, weekly_dd, peak_dd
+
+
+def get_daily_start_equity(equity: float, now: datetime | None = None) -> float:
+    """Ambil baseline equity harian yang tidak berubah ketika bot di-restart."""
+    now = now or datetime.now()
+    state = load_state()
+    day_key = now.date().isoformat()
+    if state.get("day_key") != day_key or float(state.get("day_start_equity", 0.0)) <= 0:
+        state["day_key"] = day_key
+        state["day_start_equity"] = float(equity)
+        save_state(state)
+    return float(state["day_start_equity"])
 
 
 def get_tracked_tickets() -> set[int]:

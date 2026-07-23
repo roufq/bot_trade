@@ -1,84 +1,167 @@
-# Instalasi Notifikasi Telegram
+# Panduan Telegram Bot Trading untuk Pemula
 
-Panduan ini menjelaskan cara menghubungkan bot trading dengan Telegram di
-Windows PowerShell. Jangan menyimpan atau membagikan token asli di source code,
-screenshot, GitHub, atau percakapan.
+Panduan ini dimulai dari membuat akun Telegram sampai notifikasi bot trading
+berhasil masuk. Konfigurasi menggunakan environment variable agar token tidak
+tersimpan di source code atau GitHub.
 
-## 1. Membuat bot Telegram
+## Yang dibutuhkan
 
-1. Buka Telegram dan cari akun resmi `@BotFather`.
-2. Kirim perintah `/newbot`.
-3. Isi nama dan username bot sesuai petunjuk. Username harus berakhiran `bot`.
-4. Simpan token yang diberikan BotFather di tempat aman.
+- Aplikasi Telegram di ponsel atau komputer.
+- Project sudah dipasang mengikuti [INSTALLATION.md](INSTALLATION.md).
+- PowerShell.
+- Koneksi internet.
 
-Jika token pernah tersebar, kirim `/revoke` ke BotFather dan buat token baru
-dengan `/token`.
+## 1. Buat bot melalui BotFather
 
-## 2. Memulai percakapan dengan bot
+1. Buka Telegram.
+2. Cari `@BotFather`.
+3. Pastikan akun memiliki tanda verifikasi Telegram.
+4. Tekan **Start**.
+5. Kirim:
 
-1. Buka alamat `https://t.me/USERNAME_BOT` sesuai username bot Anda.
+```text
+/newbot
+```
+
+6. Masukkan nama bebas, misalnya `Notifikasi Trading Saya`.
+7. Masukkan username unik yang berakhiran `bot`, misalnya
+   `notifikasi_trading_saya_bot`.
+8. BotFather memberikan token berbentuk:
+
+```text
+1234567890:CONTOH_TOKEN_RAHASIA
+```
+
+Token adalah password bot. Jangan kirim token ke orang lain, screenshot,
+GitHub, issue, atau grup.
+
+## 2. Mulai chat dengan bot
+
+Bot tidak dapat mengirim pesan pribadi sebelum Anda memulai percakapan:
+
+1. Tekan link bot yang diberikan BotFather.
 2. Tekan **Start**.
-3. Kirim pesan `/start`, lalu kirim pesan biasa seperti `Halo`.
+3. Kirim `/start`.
+4. Kirim satu pesan biasa, misalnya `Halo`.
 
-Bot tidak dapat mengirim pesan pribadi sebelum pengguna memulai percakapan.
+## 3. Dapatkan Chat ID
 
-## 3. Mendapatkan Chat ID
-
-Buka alamat berikut di browser dengan mengganti `<TOKEN>` memakai token bot:
+Buka browser dan ganti `<TOKEN>` dengan token milik Anda:
 
 ```text
 https://api.telegram.org/bot<TOKEN>/getUpdates
 ```
 
-Cari bagian berikut:
+Contoh struktur hasil:
 
 ```json
 {
-  "message": {
-    "message_id": 123,
-    "chat": {
-      "id": 123456789,
-      "type": "private"
+  "ok": true,
+  "result": [
+    {
+      "update_id": 987654,
+      "message": {
+        "message_id": 25,
+        "chat": {
+          "id": 123456789,
+          "type": "private"
+        }
+      }
     }
-  }
+  ]
 }
 ```
 
-Gunakan nilai `message.chat.id`. Jangan menggunakan `message_id` atau
-`update_id`. Chat ID grup biasanya berupa angka negatif dan tanda minusnya
-wajib disertakan.
+Gunakan angka pada:
 
-Jika `result` masih kosong:
+```text
+message → chat → id
+```
 
-1. Pastikan pesan dikirim kepada bot yang tokennya sedang digunakan.
-2. Tekan **Start** dan kirim pesan baru.
-3. Refresh halaman `getUpdates`.
-4. Jika tetap kosong, buka
-   `https://api.telegram.org/bot<TOKEN>/deleteWebhook`, kirim pesan baru, lalu
-   buka kembali `getUpdates`.
+Pada contoh, Chat ID adalah `123456789`.
 
-## 4. Konfigurasi sementara
+Jangan memakai:
 
-Konfigurasi ini hanya berlaku pada jendela PowerShell yang sedang dibuka:
+- `message_id`
+- `update_id`
+- username Telegram
+
+Jika `"result":[]`:
+
+1. Pastikan Anda membuka bot yang sama dengan token tersebut.
+2. Tekan **Start**.
+3. Kirim pesan baru kepada bot.
+4. Refresh halaman `getUpdates`.
+
+Jika masih kosong, buka:
+
+```text
+https://api.telegram.org/bot<TOKEN>/deleteWebhook
+```
+
+Kemudian kirim pesan baru dan buka `getUpdates` kembali.
+
+## 4. Chat ID grup opsional
+
+Untuk mengirim notifikasi ke grup:
+
+1. Tambahkan bot ke grup.
+2. Kirim pesan di grup, misalnya `/start@username_bot`.
+3. Buka `getUpdates`.
+4. Cari `message.chat.id`.
+
+Chat ID grup biasanya negatif, misalnya:
+
+```text
+-1001234567890
+```
+
+Tanda minus wajib ikut disimpan. Pastikan bot mempunyai izin mengirim pesan.
+
+## 5. Simpan token dan Chat ID sementara
+
+Buka PowerShell:
+
+```powershell
+cd C:\trading
+.\.venv\Scripts\Activate.ps1
+```
+
+Ganti placeholder:
 
 ```powershell
 $env:TRADING_TELEGRAM_BOT_TOKEN="TOKEN_BARU_ANDA"
 $env:TRADING_TELEGRAM_CHAT_ID="CHAT_ID_ANDA"
 ```
 
-Aktifkan virtual environment dan periksa konfigurasi:
+Konfigurasi ini hilang ketika PowerShell ditutup.
+
+Periksa tanpa mencetak token:
 
 ```powershell
-cd C:\trading
-.\.venv\Scripts\Activate.ps1
-python -c "import config; print(config.TELEGRAM_ENABLED)"
+Write-Host "Token tersedia:" ([bool]$env:TRADING_TELEGRAM_BOT_TOKEN)
+Write-Host "Chat ID tersedia:" ([bool]$env:TRADING_TELEGRAM_CHAT_ID)
+python -c "import config; print('Telegram aktif:', config.TELEGRAM_ENABLED)"
 ```
 
-Hasilnya harus `True`.
+Ketiganya harus menghasilkan `True`.
 
-## 5. Menyimpan konfigurasi permanen
+## 6. Tes pengiriman pesan
 
-Jalankan di PowerShell:
+```powershell
+python -c "import notifier; print(notifier.send_telegram_message('Tes notifikasi trading'))"
+```
+
+Jika berhasil:
+
+- Pesan masuk ke Telegram.
+- Terminal menampilkan `True`.
+
+Jangan lanjut ke konfigurasi permanen sebelum tes sementara berhasil.
+
+## 7. Simpan konfigurasi permanen
+
+Jalankan satu per satu dan ganti placeholder:
 
 ```powershell
 [Environment]::SetEnvironmentVariable(
@@ -86,7 +169,9 @@ Jalankan di PowerShell:
     "TOKEN_BARU_ANDA",
     "User"
 )
+```
 
+```powershell
 [Environment]::SetEnvironmentVariable(
     "TRADING_TELEGRAM_CHAT_ID",
     "CHAT_ID_ANDA",
@@ -94,60 +179,167 @@ Jalankan di PowerShell:
 )
 ```
 
-Tutup seluruh PowerShell, buka terminal baru, lalu aktifkan `.venv` kembali.
-Environment variable permanen tidak otomatis muncul pada terminal yang sudah
-terbuka sebelum variabel tersebut dibuat.
+Environment variable permanen tidak masuk ke PowerShell yang sudah terbuka.
+Lakukan:
 
-## 6. Menguji notifikasi
+1. Tutup seluruh jendela PowerShell.
+2. Buka PowerShell baru.
+3. Aktifkan project:
 
 ```powershell
-python -c "import notifier; print(notifier.send_telegram_message('Tes notifikasi trading'))"
+cd C:\trading
+.\.venv\Scripts\Activate.ps1
 ```
 
-Jika berhasil, pesan masuk ke Telegram dan terminal menampilkan `True`.
+4. Periksa:
 
-Setelah itu jalankan bot dari terminal yang sama:
+```powershell
+Write-Host "Token tersedia:" ([bool]$env:TRADING_TELEGRAM_BOT_TOKEN)
+Write-Host "Chat ID tersedia:" ([bool]$env:TRADING_TELEGRAM_CHAT_ID)
+python -c "import config; print('Telegram aktif:', config.TELEGRAM_ENABLED)"
+```
+
+5. Tes lagi:
+
+```powershell
+python -c "import notifier; print(notifier.send_telegram_message('Tes konfigurasi permanen'))"
+```
+
+## 8. Jalankan bot trading
+
+Pastikan MT5 terbuka dan sudah login:
 
 ```powershell
 python main.py
 ```
 
-Bot mengirim notifikasi ketika koneksi MT5 berhasil, order dibuka, posisi
-ditutup, terjadi error tertentu, drawdown harian tercapai, dan bot dihentikan
-dengan `Ctrl+C`.
+Bot dapat mengirim notifikasi ketika:
 
-## 7. Troubleshooting
+- Bot berhasil dimulai.
+- Order berhasil dibuka.
+- Posisi ditutup beserta profit atau loss.
+- Error penting terjadi.
+- Drawdown harian mencapai batas.
+- Bot dihentikan secara normal dengan `Ctrl+C`.
 
-### `TELEGRAM_ENABLED` menghasilkan `False`
+Notifikasi start baru dikirim setelah koneksi MT5 berhasil. Jika koneksi MT5
+gagal, pesan start tidak akan dikirim.
 
-Periksa keberadaan variabel tanpa mencetak token:
+## 9. Tes API Telegram secara aman
 
-```powershell
-Write-Host "Token tersedia:" ([bool]$env:TRADING_TELEGRAM_BOT_TOKEN)
-Write-Host "Chat ID tersedia:" ([bool]$env:TRADING_TELEGRAM_CHAT_ID)
+Untuk memeriksa identitas bot, buka:
+
+```text
+https://api.telegram.org/bot<TOKEN>/getMe
 ```
 
-Keduanya harus menghasilkan `True`. Jangan mengganti nama environment variable
-di dalam `config.py`.
+Jangan membagikan URL lengkap karena token berada di dalam URL.
+
+Untuk menguji lewat PowerShell tanpa menampilkan token:
+
+```powershell
+$telegramUrl = "https://api.telegram.org/bot$env:TRADING_TELEGRAM_BOT_TOKEN/getMe"
+Invoke-RestMethod -Uri $telegramUrl
+```
+
+## Troubleshooting
+
+### `Telegram aktif: False`
+
+Periksa nama variabel. Harus persis:
+
+```text
+TRADING_TELEGRAM_BOT_TOKEN
+TRADING_TELEGRAM_CHAT_ID
+```
+
+Periksa:
+
+```powershell
+Write-Host ([bool]$env:TRADING_TELEGRAM_BOT_TOKEN)
+Write-Host ([bool]$env:TRADING_TELEGRAM_CHAT_ID)
+```
+
+Jika konfigurasi baru saja disimpan permanen, tutup dan buka PowerShell baru.
 
 ### `Bad Request: chat not found`
 
-- Pastikan yang dipakai adalah `message.chat.id`.
-- Pastikan Anda sudah menekan **Start** pada bot yang benar.
-- Pastikan token dan Chat ID berasal dari bot/percakapan yang sama.
-- Untuk grup, sertakan tanda minus pada Chat ID.
+Penyebab umum:
 
-### Tes berhasil tetapi restart tidak mengirim pesan
+- Menggunakan `message_id`, bukan `message.chat.id`.
+- Belum menekan **Start**.
+- Token berasal dari bot lain.
+- Chat ID grup kehilangan tanda minus.
+- Bot sudah dikeluarkan dari grup.
 
-- Simpan variabel secara permanen seperti langkah 5.
-- Buka PowerShell baru setelah menyimpan variabel.
-- Pastikan `TELEGRAM_ENABLED` bernilai `True`.
-- Notifikasi start baru dikirim setelah koneksi MT5 berhasil.
-- Hentikan bot dengan `Ctrl+C`; menutup terminal secara paksa tidak menjamin
-  notifikasi stop terkirim.
+Ulangi langkah 2 dan 3 menggunakan bot yang sama.
 
-### Token terlihat pada terminal atau screenshot
+### `"result":[]`
 
-Segera kirim `/revoke` kepada `@BotFather`, buat token baru, lalu perbarui
-`TRADING_TELEGRAM_BOT_TOKEN`. Token yang sudah tersebar tidak boleh digunakan
-kembali.
+- Kirim pesan baru kepada bot.
+- Pastikan token sesuai dengan bot tersebut.
+- Refresh `getUpdates`.
+- Hapus webhook menggunakan `deleteWebhook`, lalu kirim pesan lagi.
+
+### `Unauthorized` atau HTTP 401
+
+Token salah, sudah dicabut, atau memiliki spasi tambahan. Buat token baru
+melalui BotFather dan simpan ulang.
+
+### HTTP 400
+
+Baca detail setelah `Bad Request`. Penyebab paling umum adalah Chat ID salah.
+Tes `getMe` untuk memastikan token valid, lalu ambil ulang `message.chat.id`.
+
+### Tes pesan berhasil, tetapi start bot tidak mengirim pesan
+
+1. Pastikan perintah `python main.py` dijalankan dari PowerShell yang memiliki
+   environment variable.
+2. Periksa `TELEGRAM_ENABLED`.
+3. Pastikan MT5 berhasil terkoneksi.
+4. Pastikan hanya satu instance bot berjalan.
+5. Periksa `system_log.csv`.
+
+### Pesan stop tidak masuk
+
+Hentikan bot dengan `Ctrl+C`. Menutup PowerShell secara paksa, mematikan
+komputer, atau menghentikan proses dari Task Manager tidak memberi bot waktu
+untuk mengirim pesan stop.
+
+### Token pernah terlihat atau dibagikan
+
+Token tersebut harus dianggap bocor:
+
+1. Buka `@BotFather`.
+2. Kirim `/revoke`.
+3. Pilih bot.
+4. Buat token baru dengan `/token` bila diperlukan.
+5. Simpan token baru sebagai environment variable.
+6. Tutup dan buka PowerShell.
+7. Tes ulang.
+
+Jangan menggunakan kembali token lama.
+
+## Mengganti token permanen
+
+```powershell
+[Environment]::SetEnvironmentVariable(
+    "TRADING_TELEGRAM_BOT_TOKEN",
+    "TOKEN_BARU_ANDA",
+    "User"
+)
+```
+
+Tutup PowerShell, buka kembali, lalu tes.
+
+## Menghapus konfigurasi Telegram
+
+Jika Telegram tidak ingin digunakan:
+
+```powershell
+[Environment]::SetEnvironmentVariable("TRADING_TELEGRAM_BOT_TOKEN", $null, "User")
+[Environment]::SetEnvironmentVariable("TRADING_TELEGRAM_CHAT_ID", $null, "User")
+```
+
+Tutup dan buka PowerShell baru. Bot trading tetap berjalan tanpa notifikasi
+Telegram.

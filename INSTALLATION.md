@@ -1,34 +1,75 @@
-# Instalasi Bot Trading MT5 XAUUSD dari GitHub
+# Panduan Instalasi Bot Trading MT5 untuk Pemula
 
-Panduan ini ditujukan untuk Windows 10/11. Bot berkomunikasi langsung dengan
-MetaTrader 5 desktop dan harus diuji pada akun demo sebelum digunakan pada akun
-live.
+Panduan ini menjelaskan instalasi dari komputer Windows yang belum memiliki
+Python sampai bot berhasil berjalan. Ikuti langkah secara berurutan dan gunakan
+akun **demo** terlebih dahulu.
 
-## Peringatan
+## Sebelum memulai
 
-- Tidak ada jaminan profit atau win rate tertentu.
-- Gunakan akun demo minimal 1–3 bulan dan evaluasi drawdown serta biaya broker.
-- Jangan commit token Telegram, password MT5, file `.env`, log CSV, atau model
-  ML ke GitHub.
-- Jalankan hanya satu instance `main.py`.
+- Bot tidak menjamin profit dan tetap dapat mengalami kerugian.
+- Gunakan Windows 10 atau Windows 11.
+- Jangan memakai akun live sebelum pengujian demo minimal 1--3 bulan.
+- Jangan membagikan password MT5, token Telegram, atau API key.
+- Jangan menempelkan kredensial ke `config.py` atau mengunggahnya ke GitHub.
+- Jalankan hanya satu `main.py`.
 
-## Prasyarat
+## 1. Instal Python
 
-1. Windows 10/11.
-2. Git.
-3. Python 3.11 direkomendasikan untuk kompatibilitas package MT5.
-4. MetaTrader 5 desktop sudah terpasang dan login ke akun demo.
-5. Tombol **Algo Trading** pada MT5 aktif.
-6. Symbol broker untuk emas tersedia, misalnya `XAUUSD.vx` atau `XAUUSD`.
+1. Buka `https://www.python.org/downloads/windows/`.
+2. Unduh Python 3.11 versi 64-bit.
+3. Jalankan installer.
+4. Pada halaman pertama, centang **Add python.exe to PATH**.
+5. Pilih **Install Now**.
+6. Setelah selesai, tutup installer dan buka PowerShell baru.
 
-Periksa instalasi:
+Cara membuka PowerShell:
+
+1. Tekan tombol Windows.
+2. Ketik `PowerShell`.
+3. Buka **Windows PowerShell**.
+
+Periksa Python:
+
+```powershell
+python --version
+python -m pip --version
+```
+
+Versi Python seharusnya dimulai dengan `Python 3.11`. Jika perintah `python`
+tidak ditemukan, tutup PowerShell dan buka kembali. Jika masih gagal, instal
+ulang Python dan pastikan **Add python.exe to PATH** dicentang.
+
+## 2. Instal Git
+
+1. Buka `https://git-scm.com/download/win`.
+2. Unduh dan jalankan installer.
+3. Untuk pengguna pemula, gunakan pilihan bawaan dengan menekan **Next** sampai
+   instalasi selesai.
+4. Tutup dan buka kembali PowerShell.
+
+Periksa Git:
 
 ```powershell
 git --version
-python --version
 ```
 
-## Clone repository
+## 3. Instal MetaTrader 5
+
+1. Unduh MetaTrader 5 dari broker yang akan digunakan.
+2. Instal dan buka terminal MT5.
+3. Login ke **akun demo**.
+4. Catat nomor login dan nama server dari informasi akun.
+5. Aktifkan tombol **Algo Trading** di bagian atas MT5.
+6. Buka **Market Watch** dengan `Ctrl+M`.
+7. Klik kanan Market Watch, pilih **Symbols**, lalu tampilkan simbol emas.
+8. Catat nama simbol persis dari broker, misalnya `XAUUSD`, `XAUUSD.vx`, atau
+   nama lain.
+
+Biarkan terminal MT5 terbuka selama bot berjalan.
+
+## 4. Unduh project dari GitHub
+
+Buka PowerShell, lalu jalankan:
 
 ```powershell
 cd C:\
@@ -36,249 +77,326 @@ git clone https://github.com/roufq/bot_trade.git trading
 cd C:\trading
 ```
 
-Jika folder `C:\trading` sudah ada, jangan menjalankan clone di atasnya. Masuk
-ke folder tersebut dan gunakan `git pull` hanya jika perubahan lokal sudah
-diamankan.
-
-## Virtual environment dan dependency
+Periksa isi folder:
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+Get-ChildItem
 ```
 
-Jika PowerShell menolak aktivasi script:
+File seperti `main.py`, `config.py`, dan `requirements.txt` harus terlihat.
+
+Jika muncul pesan bahwa folder `trading` sudah ada, jangan melakukan clone
+ulang. Gunakan:
+
+```powershell
+cd C:\trading
+git status
+```
+
+## 5. Buat virtual environment
+
+Virtual environment memisahkan package bot dari Python lain di komputer:
+
+```powershell
+cd C:\trading
+python -m venv .venv
+```
+
+Aktifkan:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+Jika aktivasi ditolak PowerShell:
 
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
-Alternatif tanpa aktivasi:
+Jawab `Y`, tutup PowerShell, buka lagi, kemudian:
 
 ```powershell
-.\.venv\Scripts\python.exe main.py
+cd C:\trading
+.\.venv\Scripts\Activate.ps1
 ```
 
-Pastikan interpreter project digunakan:
+Jika berhasil, awal baris terminal menampilkan `(.venv)`.
+
+## 6. Instal dependency
+
+Pastikan `(.venv)` terlihat, kemudian:
 
 ```powershell
-python -c "import sys; print(sys.executable)"
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
-Output seharusnya mengarah ke `C:\trading\.venv\Scripts\python.exe`.
-
-## Setup MetaTrader 5
-
-1. Buka MT5 dan login ke akun demo.
-2. Aktifkan **Algo Trading**.
-3. Pastikan symbol emas tampil di Market Watch.
-4. Simpan kredensial MT5 melalui environment variable (opsional bila terminal
-   sudah login pada akun yang benar):
+Periksa package utama:
 
 ```powershell
-$env:TRADING_MT5_LOGIN="12345678"
-$env:TRADING_MT5_PASSWORD="PASSWORD_ANDA"
-$env:TRADING_MT5_SERVER="NAMA-SERVER"
-$env:TRADING_MT5_PATH="C:\Program Files\MetaTrader 5\terminal64.exe"
+python -c "import MetaTrader5, pandas, sklearn, joblib; print('Dependency OK')"
 ```
 
-Sesuaikan hanya `SYMBOL` di `config.py` bila nama instrumen broker berbeda.
-Jika MT5 sudah login, variabel koneksi dapat dikosongkan dan connector memakai
-sesi aktif. Gunakan `SetEnvironmentVariable(..., "User")` seperti panduan
-Telegram bila kredensial perlu disimpan permanen.
+Jika berhasil, terminal menampilkan `Dependency OK`.
 
-Uji koneksi:
+## 7. Sesuaikan simbol
+
+Buka `config.py` menggunakan Notepad:
+
+```powershell
+notepad config.py
+```
+
+Cari:
+
+```python
+SYMBOL = "XAUUSD.vx"
+```
+
+Ganti nilainya hanya jika nama simbol emas broker berbeda. Huruf, titik, dan
+akhiran harus sama persis dengan Market Watch. Simpan lalu tutup Notepad.
+
+## 8. Konfigurasi akun MT5
+
+Cara paling sederhana adalah membiarkan MT5 terbuka dan sudah login pada akun
+yang benar. Bot akan menggunakan sesi terminal tersebut.
+
+Untuk menyimpan konfigurasi akun secara permanen, ganti seluruh placeholder:
+
+```powershell
+[Environment]::SetEnvironmentVariable("TRADING_MT5_LOGIN", "NOMOR_LOGIN", "User")
+[Environment]::SetEnvironmentVariable("TRADING_MT5_PASSWORD", "PASSWORD_MT5", "User")
+[Environment]::SetEnvironmentVariable("TRADING_MT5_SERVER", "NAMA_SERVER", "User")
+[Environment]::SetEnvironmentVariable(
+    "TRADING_MT5_PATH",
+    "C:\Program Files\MetaTrader 5\terminal64.exe",
+    "User"
+)
+```
+
+Path terminal dapat berbeda jika MT5 dipasang oleh broker. Untuk menemukannya:
+
+1. Klik kanan shortcut MT5.
+2. Pilih **Properties**.
+3. Salin nilai **Target** tanpa tanda kutip.
+
+Setelah menyimpan environment variable, tutup seluruh PowerShell dan buka
+PowerShell baru:
+
+```powershell
+cd C:\trading
+.\.venv\Scripts\Activate.ps1
+```
+
+Jangan memakai perintah yang mencetak password ke layar.
+
+## 9. Uji koneksi MT5
+
+Pastikan MT5 terbuka, login, dan Algo Trading aktif:
 
 ```powershell
 python test_connection.py
 ```
 
-## Setup Telegram
+Jika simbol tidak ditemukan, periksa kembali `SYMBOL` di `config.py` dan
+pastikan simbol ditampilkan di Market Watch.
 
-Telegram dikonfigurasi melalui environment variable, bukan dengan menempelkan
-token ke `config.py`:
+## 10. Pasang notifikasi Telegram
 
-```powershell
-$env:TRADING_TELEGRAM_BOT_TOKEN="TOKEN_BARU_ANDA"
-$env:TRADING_TELEGRAM_CHAT_ID="CHAT_ID_ANDA"
-```
+Ikuti [TELEGRAM_SETUP.md](TELEGRAM_SETUP.md) mulai dari pembuatan bot,
+mendapatkan Chat ID, menyimpan token permanen, sampai tes pesan.
 
-Periksa dan uji:
+Telegram bersifat opsional. Bot tetap dapat berjalan tanpa Telegram.
 
-```powershell
-python -c "import config; print(config.TELEGRAM_ENABLED)"
-python -c "import notifier; print(notifier.send_telegram_message('Tes notifikasi trading'))"
-```
-
-Panduan lengkap, termasuk konfigurasi permanen dan troubleshooting
-`chat not found`, tersedia di [TELEGRAM_SETUP.md](TELEGRAM_SETUP.md).
-
-## Menjalankan test
+## 11. Jalankan pemeriksaan project
 
 ```powershell
 python -m unittest discover -s tests -v
 ```
 
-Semua test harus lulus sebelum bot dijalankan.
+Semua test harus menampilkan `OK`. Jangan menjalankan bot jika ada `FAILED`
+atau `ERROR`.
 
-## Menjalankan bot
+## 12. Jalankan bot
 
 ```powershell
 python main.py
 ```
 
-Bot akan mengambil candle MT5 yang sudah tertutup, mengevaluasi sinyal,
-menghitung risiko, mengirim order, mencatat entry/exit, dan mengirim notifikasi.
-Hentikan secara normal dengan `Ctrl+C`.
+Contoh awal yang normal:
 
-Bot juga memiliki single-instance lock, filter spread/volatilitas, blackout
-berita manual, cooldown setelah trade, loss-streak pause, drawdown
-harian/mingguan/equity-peak, break-even, dan trailing stop. Blackout berita
-diisi lewat environment variable, contoh:
-
-```powershell
-$env:TRADING_NEWS_BLACKOUT_WINDOWS="13:25-13:40,19:55-20:15"
+```text
+[mt5_connector] Koneksi ke MT5 berhasil.
+Sinyal: none - Belum ada setup valid
 ```
 
-Jam tersebut mengikuti waktu lokal komputer. Daftar harus diperbarui sesuai
-jadwal berita; secara default project tidak mengunduh kalender otomatis.
+`Sinyal: none` bukan error. Bot sedang menunggu chart memenuhi syarat.
 
-Kalender otomatis bersifat opsional. Isi URL endpoint JSON melalui:
+Hentikan dengan:
 
-```powershell
-$env:TRADING_NEWS_CALENDAR_URL="https://endpoint-anda/events"
+```text
+Ctrl+C
 ```
 
-Contoh menggunakan Financial Modeling Prep (FMP):
+Jangan menjalankan `python main.py` dari dua terminal. Project memiliki
+single-instance lock, tetapi pengguna tetap harus menjalankannya satu kali.
 
-```powershell
-$env:TRADING_NEWS_CALENDAR_URL="https://financialmodelingprep.com/stable/economic-calendar?apikey=API_KEY_ANDA"
-```
+## 13. Memahami alasan bot tidak entry
 
-Simpan API key sebagai environment variable dan jangan commit URL berisi key.
-Adapter mendukung field FMP `date`, `country`, `impact`, dan `event`; waktu FMP
-yang tidak memiliki offset diperlakukan sebagai UTC lalu dikonversi ke waktu
-lokal komputer.
+Terminal menjelaskan penyebabnya. Contoh normal:
 
-Endpoint harus mengembalikan list event atau object `{ "events": [...] }`.
-Setiap event menggunakan field `time`, `currency`, `impact`, dan `title`.
-Contoh:
+- Belum ada setup chart valid.
+- Spread terlalu tinggi.
+- Volatilitas tidak sesuai.
+- Masih cooldown progresif.
+- Posisi atau risiko terbuka sudah penuh.
+- Lot minimum broker melampaui batas risiko.
+- Kalender berita atau blackout manual aktif.
+- Performa rolling sedang masuk mode probe.
+- Drawdown mencapai batas keselamatan.
 
-```json
-{"time":"2026-07-21T19:30:00+07:00","currency":"USD","impact":"high","title":"CPI"}
-```
+Cooldown M1 yang digunakan:
 
-Jika endpoint belum dikonfigurasi atau gagal, blackout manual tetap digunakan.
+- Setelah profit: tanpa jeda.
+- Loss pertama: 60 detik.
+- Loss kedua berturut-turut: 3 menit.
+- Loss ketiga dan seterusnya: 10 menit.
+- Loss eksekusi abnormal: 10 menit.
 
-## Data lokal dan AI
+Ketika performa rolling melemah, bot berhenti 10 menit lalu masuk **mode
+probe**. Dalam mode ini threshold entry lebih tinggi dan target risiko
+dipotong. Bot tidak terkunci selamanya.
 
-File berikut dibuat atau diperbarui secara lokal dan sengaja tidak disimpan di
-GitHub:
+## 14. File data lokal
 
-- `trade_log.csv`
-- `closed_trade_log.csv`
-- `system_log.csv`
-- `backtest_trades.csv`
-- `backtest_equity_curve.csv`
-- `ml_model.joblib`
+Bot membuat file berikut secara otomatis:
 
-Karena data tersebut tidak ikut repository, instalasi baru memulai histori AI
-dari nol. Audit data dengan:
+- `trade_log.csv`: data entry.
+- `closed_trade_log.csv`: hasil transaksi tertutup.
+- `system_log.csv`: aktivitas dan error.
+- `shadow_signal_log.csv`: simulasi sinyal AI yang diterima dan ditolak.
+- `runtime_state.json`: baseline drawdown dan state proteksi.
+- `ml_model.joblib`: model aktif setelah training berhasil.
+
+File tersebut tidak ikut terunduh pada instalasi baru. AI instalasi baru mulai
+belajar dari nol berdasarkan akun dan broker pengguna tersebut.
+
+## 15. Pembelajaran AI
+
+Periksa kualitas data:
 
 ```powershell
 python data_quality.py
 ```
 
-Status `INVALID` dengan alasan `baru N trade valid` adalah normal sebelum ada
-minimal 50 closed trade yang berisi variasi profit dan loss.
+Pesan berikut normal apabila transaksi belum cukup:
 
-Jika audit menghasilkan `VALID`, jalankan training:
+```text
+INVALID {'reason': 'baru N trade valid'}
+```
+
+Training baru dapat dijalankan setelah minimal 50 closed trade valid:
 
 ```powershell
 python retrain_model.py
 ```
 
-Kandidat hanya dipromosikan jika memenuhi batas AUC dan Brier score. Versi,
-metadata, dan model aktif disimpan di `model_registry/`. Lihat versi:
+Untuk evaluasi yang lebih layak, kumpulkan 200--500 transaksi dari berbagai
+kondisi pasar. Kandidat model dapat ditolak apabila hasil out-of-sample buruk;
+itu adalah proteksi, bukan kerusakan program.
 
-```powershell
-python model_registry.py
-```
-
-Rollback bila diperlukan:
-
-```powershell
-python model_registry.py --rollback YYYYMMDD_HHMMSS
-```
-
-Model aktif disimpan sebagai `ml_model.joblib`. Model dan histori dari akun
-atau broker lain tidak otomatis cocok dengan kondisi broker Anda.
-
-Lihat statistik berjalan:
+Lihat laporan:
 
 ```powershell
 python performance_report.py
 ```
 
-Laporan mencakup win rate, profit factor, expectancy, rata-rata win/loss, loss
-streak, drawdown closed balance, spread, dan slippage.
+## 16. Blackout berita opsional
 
-## Backtest
-
-Pastikan MT5 aktif dan memiliki data historis, kemudian jalankan:
+Untuk memasukkan jam berita secara sementara:
 
 ```powershell
-python backtest.py
+$env:TRADING_NEWS_BLACKOUT_WINDOWS="13:25-13:40,19:55-20:15"
 ```
 
-Hasil backtest bukan jaminan performa masa depan. Periksa spread, komisi,
-slippage, profit factor, dan maximum drawdown sebelum mengambil keputusan.
-
-## Update dari GitHub
-
-Hentikan bot dengan `Ctrl+C`, lalu periksa perubahan lokal:
+Jam mengikuti waktu komputer. Untuk menyimpannya:
 
 ```powershell
+[Environment]::SetEnvironmentVariable(
+    "TRADING_NEWS_BLACKOUT_WINDOWS",
+    "13:25-13:40,19:55-20:15",
+    "User"
+)
+```
+
+Kalender API otomatis hanya bekerja jika endpoint yang digunakan tersedia pada
+paket provider Anda. Jangan mengunggah API key ke GitHub.
+
+## 17. Update project dari GitHub
+
+Hentikan bot dengan `Ctrl+C`, lalu:
+
+```powershell
+cd C:\trading
+.\.venv\Scripts\Activate.ps1
 git status
 git pull
 python -m pip install -r requirements.txt
 python -m unittest discover -s tests -v
 ```
 
-Jangan menjalankan `git reset --hard` karena dapat menghapus perubahan lokal.
+Jika `git pull` menolak karena ada perubahan lokal, jangan gunakan
+`git reset --hard`. Simpan perubahan atau minta bantuan untuk menggabungkannya.
 
-## Troubleshooting singkat
+## Troubleshooting
+
+### `python` tidak dikenali
+
+Instal ulang Python dan centang **Add python.exe to PATH**, lalu buka
+PowerShell baru.
 
 ### `ModuleNotFoundError`
 
-Aktifkan `.venv` atau gunakan interpreter lengkap:
+Aktifkan virtual environment:
 
 ```powershell
-.\.venv\Scripts\python.exe main.py
+cd C:\trading
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
 ```
 
-### Telegram tidak aktif
+### Aktivasi `.venv` ditolak
 
 ```powershell
-python -c "import config; print(config.TELEGRAM_ENABLED)"
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
-Jika `False`, ikuti [TELEGRAM_SETUP.md](TELEGRAM_SETUP.md).
+Kemudian buka PowerShell baru.
 
-### Bot tidak entry
+### Koneksi MT5 gagal
 
-Baca alasan pada terminal dan `system_log.csv`. Penolakan dapat berasal dari
-sinyal, spread/kondisi pasar, threshold learning, batas posisi, drawdown,
-risiko minimum lot, atau respons broker.
+- Pastikan MT5 terbuka dan login.
+- Pastikan koneksi internet aktif.
+- Aktifkan Algo Trading.
+- Periksa server, login, path terminal, dan nama simbol.
+- Gunakan akun demo dari terminal broker yang sama.
 
-Proteksi tahap produksi juga dapat menolak entry ketika posisi searah sedang
-rugi, jarak antar-entry terlalu dekat, rolling profit factor/expectancy buruk,
-loss aktual melampaui planned risk, tick stale, margin tidak cukup, order check
-broker gagal, order-error circuit breaker aktif, atau model terdeteksi drift.
+### `Order plan ditolak` atau `lot minimum`
 
-### Bot berhenti pada drawdown
+Modal mungkin terlalu kecil dibanding ukuran lot minimum dan jarak SL.
+Proteksi ini mencegah risiko aktual melebihi batas. Jangan menaikkan batas
+risiko hanya untuk memaksa order.
 
-Bot menggunakan `MAX_DAILY_DRAWDOWN_PERCENT` di `config.py`. Acuannya adalah
-equity awal hari dan mencakup floating profit/loss.
+### Bot berhenti karena drawdown
+
+Baseline drawdown harian tersimpan di `runtime_state.json` dan tidak ter-reset
+hanya dengan restart. Jangan menghapus state untuk menghindari proteksi.
+
+### Menjalankan tanpa aktivasi `.venv`
+
+Gunakan interpreter lengkap:
+
+```powershell
+C:\trading\.venv\Scripts\python.exe C:\trading\main.py
+```
