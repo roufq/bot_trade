@@ -2,7 +2,7 @@ import sys
 import tempfile
 from pathlib import Path
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from datetime import datetime
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -21,6 +21,16 @@ class RuntimeGuardTests(unittest.TestCase):
                 self.assertFalse(second.acquire())
             finally:
                 first.release()
+
+    def test_release_ignores_windows_unlock_error(self):
+        lock = runtime_guard.SingleInstanceLock("unused")
+        handle = MagicMock()
+        handle.fileno.return_value = 1
+        lock.handle = handle
+        with patch("msvcrt.locking", side_effect=PermissionError(13, "denied")):
+            lock.release()
+        handle.close.assert_called_once()
+        self.assertIsNone(lock.handle)
 
     def test_tracked_tickets_survive_state_reload(self):
         with tempfile.TemporaryDirectory() as tmpdir:

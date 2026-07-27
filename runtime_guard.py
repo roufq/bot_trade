@@ -41,10 +41,19 @@ class SingleInstanceLock:
         import msvcrt
 
         try:
-            self.handle.seek(0)
-            msvcrt.locking(self.handle.fileno(), msvcrt.LK_UNLCK, 1)
+            try:
+                self.handle.seek(0)
+                msvcrt.locking(self.handle.fileno(), msvcrt.LK_UNLCK, 1)
+            except OSError:
+                # Windows dapat lebih dulu melepas/menolak unlock ketika proses
+                # sedang ditutup. Kegagalan cleanup tidak boleh membuat engine
+                # yang sudah berhenti terlihat crash.
+                pass
         finally:
-            self.handle.close()
+            try:
+                self.handle.close()
+            except OSError:
+                pass
             self.handle = None
 
 

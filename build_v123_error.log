@@ -1,0 +1,538 @@
+test_direction_identity_is_not_a_model_feature (test_ai_trader.TrainingPreparationTests.test_direction_identity_is_not_a_model_feature) ... ok
+test_entry_sl_tp_survive_merge_suffixes (test_ai_trader.TrainingPreparationTests.test_entry_sl_tp_survive_merge_suffixes) ... ok
+test_direction_limit_cannot_exceed_total_limit (test_desktop_app.DesktopSettingsTests.test_direction_limit_cannot_exceed_total_limit) ... ok
+test_every_desktop_setting_is_consumed_by_config (test_desktop_app.DesktopSettingsTests.test_every_desktop_setting_is_consumed_by_config) ... ok
+test_every_preset_is_valid (test_desktop_app.DesktopSettingsTests.test_every_preset_is_valid) ... ok
+test_installed_exe_uses_local_app_data (test_desktop_app.DesktopSettingsTests.test_installed_exe_uses_local_app_data) ... ok
+test_news_calendar_url_must_be_http (test_desktop_app.DesktopSettingsTests.test_news_calendar_url_must_be_http) ... ok
+test_project_exe_keeps_existing_history (test_desktop_app.DesktopSettingsTests.test_project_exe_keeps_existing_history) ... ok
+test_rejects_inverted_indicator_and_schedule_ranges (test_desktop_app.DesktopSettingsTests.test_rejects_inverted_indicator_and_schedule_ranges) ... ok
+test_rejects_unsafe_or_invalid_numeric_values (test_desktop_app.DesktopSettingsTests.test_rejects_unsafe_or_invalid_numeric_values) ... ok
+test_source_connection_tools_dispatch_through_desktop_cli (test_desktop_app.DesktopSettingsTests.test_source_connection_tools_dispatch_through_desktop_cli) ... ok
+test_valid_settings (test_desktop_app.DesktopSettingsTests.test_valid_settings) ... ok
+test_export_then_import_supported_experience_csv (test_history_store.HistoryStoreTests.test_export_then_import_supported_experience_csv) ... ok
+test_import_rejects_unknown_csv (test_history_store.HistoryStoreTests.test_import_rejects_unknown_csv) ... ok
+test_merge_deduplicates_ticket_and_preserves_unique_rows (test_history_store.HistoryStoreTests.test_merge_deduplicates_ticket_and_preserves_unique_rows) ... ok
+test_merge_learning_history_does_nothing_for_same_directory (test_history_store.HistoryStoreTests.test_merge_learning_history_does_nothing_for_same_directory) ... ok
+test_accepts_varied_unique_history (test_learning_and_risk.LearningQualityTests.test_accepts_varied_unique_history) ... ok
+test_metrics_distinguish_profit_size_using_r_multiple (test_learning_and_risk.LearningQualityTests.test_metrics_distinguish_profit_size_using_r_multiple) ... ok
+test_rejects_uniform_corrupt_history (test_learning_and_risk.LearningQualityTests.test_rejects_uniform_corrupt_history) ... ok
+test_segment_is_setup_only_not_trade_direction (test_learning_and_risk.LearningQualityTests.test_segment_is_setup_only_not_trade_direction) ... ok
+test_allows_minimum_lot_within_hard_risk_limit (test_learning_and_risk.RiskSizingTests.test_allows_minimum_lot_within_hard_risk_limit) ... ok
+test_open_risk_uses_stop_distance (test_learning_and_risk.RiskSizingTests.test_open_risk_uses_stop_distance) ... ok
+test_rejects_minimum_lot_when_it_exceeds_risk_budget (test_learning_and_risk.RiskSizingTests.test_rejects_minimum_lot_when_it_exceeds_risk_budget) ... ok
+test_future_server_time_falls_back_to_local_log_time (test_market_filters.MarketFilterTests.test_future_server_time_falls_back_to_local_log_time) ... ok
+test_loss_cooldown (test_market_filters.MarketFilterTests.test_loss_cooldown) ... ok
+test_manual_news_blackout (test_market_filters.MarketFilterTests.test_manual_news_blackout) ... ok
+test_second_loss_uses_progressive_cooldown (test_market_filters.MarketFilterTests.test_second_loss_uses_progressive_cooldown) ... ok
+test_spread_below_thirty_five_percent_is_available_for_quiet_market_mode (test_market_filters.MarketFilterTests.test_spread_below_thirty_five_percent_is_available_for_quiet_market_mode) ... ok
+test_spread_between_twenty_and_twenty_five_percent_is_allowed (test_market_filters.MarketFilterTests.test_spread_between_twenty_and_twenty_five_percent_is_allowed) ... ok
+test_spread_guard (test_market_filters.MarketFilterTests.test_spread_guard) ... ok
+test_filters_and_aggregates_only_requested_position (test_mt5_connector.ClosedDealLookupTests.test_filters_and_aggregates_only_requested_position) ... ok
+test_rejects_insufficient_remaining_margin (test_next_stage_guards.ExecutionGuardTests.test_rejects_insufficient_remaining_margin) ... ok
+test_rejects_averaging_into_losing_position (test_next_stage_guards.ExposureTests.test_rejects_averaging_into_losing_position) ... ok
+test_failed_calendar_request_is_throttled (test_next_stage_guards.NewsFilterTests.test_failed_calendar_request_is_throttled) ... ok
+test_fmp_country_and_event_fields_are_supported (test_next_stage_guards.NewsFilterTests.test_fmp_country_and_event_fields_are_supported) ... ok
+test_high_impact_usd_event_blocks_entry (test_next_stage_guards.NewsFilterTests.test_high_impact_usd_event_blocks_entry) ... ok
+test_three_errors_open_circuit (test_next_stage_guards.OrderCircuitTests.test_three_errors_open_circuit) ... ok
+test_negative_rolling_enters_probe_mode_after_pause (test_next_stage_guards.PerformanceGuardTests.test_negative_rolling_enters_probe_mode_after_pause) ... ok
+test_oversized_loss_only_blocks_for_cooldown (test_next_stage_guards.PerformanceGuardTests.test_oversized_loss_only_blocks_for_cooldown) ... ok
+test_stops_negative_rolling_expectancy (test_next_stage_guards.PerformanceGuardTests.test_stops_negative_rolling_expectancy) ... ok
+test_break_even_never_worsens_buy_stop (test_position_manager.PositionManagerTests.test_break_even_never_worsens_buy_stop) ... ok
+test_daily_equity_baseline_survives_restart_and_resets_next_day (test_runtime_guard.RuntimeGuardTests.test_daily_equity_baseline_survives_restart_and_resets_next_day) ... ok
+test_single_instance_lock_rejects_second_handle (test_runtime_guard.RuntimeGuardTests.test_single_instance_lock_rejects_second_handle) ... ok
+test_tracked_tickets_survive_state_reload (test_runtime_guard.RuntimeGuardTests.test_tracked_tickets_survive_state_reload) ... ok
+test_records_and_resolves_rejected_signal (test_shadow_tracker.ShadowTrackerTests.test_records_and_resolves_rejected_signal) ... ok
+test_momentum_can_enter_within_relaxed_atr_distance (test_strategy_entry.MomentumDistanceTests.test_momentum_can_enter_within_relaxed_atr_distance) ... ok
+test_momentum_still_rejects_chasing_price_too_far_from_ema (test_strategy_entry.MomentumDistanceTests.test_momentum_still_rejects_chasing_price_too_far_from_ema) ... ok
+test_clean_trade_log_removes_rows_without_position_ticket (test_trade_logger.TradeLoggerRepairTests.test_clean_trade_log_removes_rows_without_position_ticket) ... ok
+test_entry_lookup_returns_original_order_and_levels (test_trade_logger.TradeLoggerRepairTests.test_entry_lookup_returns_original_order_and_levels) ... ok
+test_log_closed_trade_is_idempotent_by_ticket (test_trade_logger.TradeLoggerRepairTests.test_log_closed_trade_is_idempotent_by_ticket) ... ok
+test_repair_log_with_malformed_reason_and_missing_columns (test_trade_logger.TradeLoggerRepairTests.test_repair_log_with_malformed_reason_and_missing_columns) ... ok
+
+----------------------------------------------------------------------
+Ran 51 tests in 0.255s
+
+OK
+232 INFO: PyInstaller: 6.21.0, contrib hooks: 2026.6
+233 INFO: Python: 3.14.6
+259 INFO: Platform: Windows-11-10.0.26200-SP0
+260 INFO: Python environment: C:\trading\.venv
+261 INFO: wrote C:\trading\AITradingDesktop.spec
+263 INFO: Removing temporary files and cleaning cache in C:\Users\USER\AppData\Local\pyinstaller
+2030 WARNING: Failed to collect submodules for 'sklearn.externals.array_api_compat.torch' because importing 'sklearn.externals.array_api_compat.torch' raised: ModuleNotFoundError: No module named 'torch'
+4715 INFO: Module search paths (PYTHONPATH):
+['C:\\trading\\.venv\\Scripts\\pyinstaller.exe',
+ 'C:\\Python314\\python314.zip',
+ 'C:\\Python314\\DLLs',
+ 'C:\\Python314\\Lib',
+ 'C:\\Python314',
+ 'C:\\trading\\.venv',
+ 'C:\\trading\\.venv\\Lib\\site-packages',
+ 'C:\\trading']
+5328 INFO: Appending 'binaries' from .spec
+5336 INFO: Appending 'datas' from .spec
+5380 INFO: checking Analysis
+5381 INFO: Building Analysis because Analysis-00.toc is non existent
+5381 INFO: Looking for Python shared library...
+5381 INFO: Using Python shared library: C:\Python314\python314.dll
+5382 INFO: Running Analysis Analysis-00.toc
+5382 INFO: Target bytecode optimization level: 0
+5382 INFO: Initializing module dependency graph...
+5385 INFO: Initializing module graph hook caches...
+5467 INFO: Analyzing modules for base_library.zip ...
+7660 INFO: Processing standard module hook 'hook-encodings.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+8370 INFO: Processing standard module hook 'hook-pickle.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+8772 INFO: Processing standard module hook 'hook-math.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+9002 INFO: Processing standard module hook 'hook-difflib.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+9028 INFO: Processing standard module hook 'hook-heapq.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+14544 INFO: Caching module dependency graph...
+14575 INFO: Analyzing C:\trading\desktop_app.py
+14647 INFO: Processing pre-find-module-path hook 'hook-tkinter.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_find_module_path'
+14650 INFO: TclTkInfo: initializing cached Tcl/Tk info...
+15122 INFO: Processing standard module hook 'hook-_tkinter.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+15357 INFO: Processing standard module hook 'hook-sysconfig.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+15374 INFO: Processing standard module hook 'hook-_ctypes.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+15431 INFO: Processing standard module hook 'hook-pandas.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+16883 INFO: Processing standard module hook 'hook-platform.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+16946 INFO: Processing standard module hook 'hook-numpy.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+17715 INFO: Processing pre-safe-import-module hook 'hook-typing_extensions.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+17717 INFO: SetuptoolsInfo: initializing cached setuptools info...
+18826 INFO: Processing standard module hook 'hook-multiprocessing.util.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+19021 INFO: Processing standard module hook 'hook-xml.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+21623 INFO: Processing standard module hook 'hook-webbrowser.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+24789 INFO: Processing standard module hook 'hook-charset_normalizer.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+25807 INFO: Processing standard module hook 'hook-zoneinfo.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+26317 INFO: Processing standard module hook 'hook-scipy.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+28584 INFO: Processing standard module hook 'hook-scipy.linalg.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+28974 INFO: Processing standard module hook 'hook-scipy.special._ufuncs.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+31748 INFO: Processing standard module hook 'hook-scipy.spatial._ckdtree.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+33090 INFO: Processing standard module hook 'hook-scipy.spatial.transform.rotation.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+34852 INFO: Processing standard module hook 'hook-scipy.stats._stats.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+35856 INFO: Processing standard module hook 'hook-scipy.sparse.csgraph.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+37655 INFO: Processing standard module hook 'hook-scipy.special._ellip_harm_2.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+41552 INFO: Processing standard module hook 'hook-pandas.io.formats.style.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+45294 INFO: Processing standard module hook 'hook-pandas.plotting.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+46406 INFO: Processing standard module hook 'hook-dateutil.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+46661 INFO: Processing pre-safe-import-module hook 'hook-six.moves.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+49081 INFO: Processing standard module hook 'hook-sqlite3.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+49566 INFO: Processing standard module hook 'hook-pandas.io.clipboard.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+49972 INFO: Processing standard module hook 'hook-xml.etree.cElementTree.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+49983 INFO: Processing standard module hook 'hook-lxml.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+50463 INFO: Processing standard module hook 'hook-lxml.etree.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+50499 INFO: Processing standard module hook 'hook-xml.dom.domreg.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+51794 INFO: Processing standard module hook 'hook-urllib3.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+52032 INFO: Processing pre-safe-import-module hook 'hook-backports.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+52033 INFO: Setuptools: 'backports' appears to be a full setuptools-vendored copy - creating alias to 'setuptools._vendor.backports'!
+52051 INFO: Processing standard module hook 'hook-setuptools.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+52105 INFO: Processing pre-safe-import-module hook 'hook-distutils.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+52197 INFO: Processing pre-safe-import-module hook 'hook-jaraco.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+52198 INFO: Setuptools: 'jaraco' appears to be a full setuptools-vendored copy - creating alias to 'setuptools._vendor.jaraco'!
+52222 INFO: Processing pre-safe-import-module hook 'hook-more_itertools.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+52224 INFO: Setuptools: 'more_itertools' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.more_itertools'!
+52688 INFO: Processing pre-safe-import-module hook 'hook-packaging.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+53148 INFO: Processing standard module hook 'hook-setuptools._vendor.jaraco.text.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+53150 INFO: Processing pre-safe-import-module hook 'hook-importlib_resources.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+54062 INFO: Processing pre-safe-import-module hook 'hook-tomli.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+54063 INFO: Setuptools: 'tomli' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.tomli'!
+55119 INFO: Processing pre-safe-import-module hook 'hook-wheel.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+55120 INFO: Setuptools: 'wheel' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.wheel'!
+56104 INFO: Processing standard module hook 'hook-certifi.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+57279 INFO: Processing standard module hook 'hook-sklearn.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+57807 INFO: Processing standard module hook 'hook-sklearn.utils.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+58044 INFO: Processing standard module hook 'hook-narwhals.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+61691 INFO: Processing standard module hook 'hook-sklearn.externals.array_api_compat.numpy.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+61809 INFO: Processing standard module hook 'hook-sklearn.externals.array_api_compat.cupy.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+61857 INFO: Processing standard module hook 'hook-sklearn.externals.array_api_compat.torch.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+61938 INFO: Processing standard module hook 'hook-sklearn.externals.array_api_compat.dask.array.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+62643 INFO: Processing standard module hook 'hook-sklearn.metrics.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+66210 INFO: Processing standard module hook 'hook-sklearn.metrics.cluster.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+66391 INFO: Processing standard module hook 'hook-sklearn.metrics.pairwise.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+66779 INFO: Processing standard module hook 'hook-sklearn.cluster.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+67187 INFO: Processing standard module hook 'hook-sklearn.neighbors.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+67454 INFO: Processing standard module hook 'hook-sklearn.linear_model.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+70654 INFO: Processing standard module hook 'hook-sklearn.tree.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+71359 INFO: Analyzing hidden import 'sklearn._build_utils'
+71359 INFO: Analyzing hidden import 'sklearn._build_utils.tempita'
+71370 INFO: Analyzing hidden import 'sklearn._build_utils.version'
+71379 INFO: Analyzing hidden import 'sklearn._cyutility'
+71379 INFO: Analyzing hidden import 'sklearn._loss.tests'
+71380 INFO: Analyzing hidden import 'sklearn._loss.tests.test_link'
+71396 INFO: Analyzing hidden import 'sklearn._loss.tests.test_loss'
+71464 INFO: Analyzing hidden import 'sklearn._min_dependencies'
+71476 INFO: Analyzing hidden import 'sklearn.callback.tests'
+71477 INFO: Analyzing hidden import 'sklearn.callback.tests._utils'
+71506 INFO: Analyzing hidden import 'sklearn.callback.tests.conftest'
+71516 INFO: Analyzing hidden import 'sklearn.callback.tests.test_callback_context'
+71551 INFO: Analyzing hidden import 'sklearn.callback.tests.test_callback_support'
+71577 INFO: Analyzing hidden import 'sklearn.callback.tests.test_pickle'
+71763 INFO: Processing standard module hook 'hook-scipy.io.matlab.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+72729 INFO: Analyzing hidden import 'sklearn.callback.tests.test_progressbar'
+72874 INFO: Analyzing hidden import 'sklearn.callback.tests.test_scoring_monitor'
+72907 INFO: Analyzing hidden import 'sklearn.cluster._hdbscan.tests'
+72908 INFO: Analyzing hidden import 'sklearn.cluster._hdbscan.tests.test_reachibility'
+72921 INFO: Analyzing hidden import 'sklearn.cluster.tests'
+72922 INFO: Analyzing hidden import 'sklearn.cluster.tests.common'
+72931 INFO: Analyzing hidden import 'sklearn.cluster.tests.test_affinity_propagation'
+72957 INFO: Analyzing hidden import 'sklearn.cluster.tests.test_bicluster'
+72980 INFO: Analyzing hidden import 'sklearn.cluster.tests.test_birch'
+73000 INFO: Analyzing hidden import 'sklearn.cluster.tests.test_bisect_k_means'
+73017 INFO: Analyzing hidden import 'sklearn.cluster.tests.test_dbscan'
+73046 INFO: Analyzing hidden import 'sklearn.cluster.tests.test_feature_agglomeration'
+73058 INFO: Analyzing hidden import 'sklearn.cluster.tests.test_hdbscan'
+73093 INFO: Analyzing hidden import 'sklearn.cluster.tests.test_hierarchical'
+73172 INFO: Analyzing hidden import 'sklearn.cluster.tests.test_k_means'
+73235 INFO: Analyzing hidden import 'sklearn.cluster.tests.test_mean_shift'
+73255 INFO: Analyzing hidden import 'sklearn.cluster.tests.test_optics'
+73296 INFO: Analyzing hidden import 'sklearn.cluster.tests.test_spectral'
+73319 INFO: Analyzing hidden import 'sklearn.compose.tests'
+73320 INFO: Analyzing hidden import 'sklearn.compose.tests.test_column_transformer'
+73650 INFO: Analyzing hidden import 'sklearn.compose.tests.test_target'
+73697 INFO: Analyzing hidden import 'sklearn.conftest'
+73798 INFO: Processing pre-safe-import-module hook 'hook-platformdirs.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+73799 INFO: Setuptools: 'platformdirs' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.platformdirs'!
+73939 INFO: Analyzing hidden import 'sklearn.covariance.tests'
+73940 INFO: Analyzing hidden import 'sklearn.covariance.tests.test_covariance'
+73966 INFO: Analyzing hidden import 'sklearn.covariance.tests.test_elliptic_envelope'
+73980 INFO: Analyzing hidden import 'sklearn.covariance.tests.test_graphical_lasso'
+74004 INFO: Analyzing hidden import 'sklearn.covariance.tests.test_robust_covariance'
+74021 INFO: Analyzing hidden import 'sklearn.cross_decomposition'
+74062 INFO: Analyzing hidden import 'sklearn.cross_decomposition.tests'
+74063 INFO: Analyzing hidden import 'sklearn.cross_decomposition.tests.test_pls'
+74104 INFO: Analyzing hidden import 'sklearn.datasets.data'
+74106 INFO: Analyzing hidden import 'sklearn.datasets.descr'
+74108 INFO: Analyzing hidden import 'sklearn.datasets.images'
+74110 INFO: Analyzing hidden import 'sklearn.datasets.tests'
+74111 INFO: Analyzing hidden import 'sklearn.datasets.tests.data'
+74112 INFO: Analyzing hidden import 'sklearn.datasets.tests.data.openml'
+74113 INFO: Analyzing hidden import 'sklearn.datasets.tests.data.openml.id_1'
+74114 INFO: Analyzing hidden import 'sklearn.datasets.tests.data.openml.id_1119'
+74115 INFO: Analyzing hidden import 'sklearn.datasets.tests.data.openml.id_1590'
+74116 INFO: Analyzing hidden import 'sklearn.datasets.tests.data.openml.id_2'
+74117 INFO: Analyzing hidden import 'sklearn.datasets.tests.data.openml.id_292'
+74118 INFO: Analyzing hidden import 'sklearn.datasets.tests.data.openml.id_3'
+74118 INFO: Analyzing hidden import 'sklearn.datasets.tests.data.openml.id_40589'
+74119 INFO: Analyzing hidden import 'sklearn.datasets.tests.data.openml.id_40675'
+74120 INFO: Analyzing hidden import 'sklearn.datasets.tests.data.openml.id_40945'
+74121 INFO: Analyzing hidden import 'sklearn.datasets.tests.data.openml.id_40966'
+74122 INFO: Analyzing hidden import 'sklearn.datasets.tests.data.openml.id_42074'
+74123 INFO: Analyzing hidden import 'sklearn.datasets.tests.data.openml.id_42585'
+74124 INFO: Analyzing hidden import 'sklearn.datasets.tests.data.openml.id_561'
+74125 INFO: Analyzing hidden import 'sklearn.datasets.tests.data.openml.id_61'
+74126 INFO: Analyzing hidden import 'sklearn.datasets.tests.data.openml.id_62'
+74127 INFO: Analyzing hidden import 'sklearn.datasets.tests.test_20news'
+74160 INFO: Analyzing hidden import 'sklearn.datasets.tests.test_arff_parser'
+74178 INFO: Analyzing hidden import 'sklearn.datasets.tests.test_base'
+74216 INFO: Analyzing hidden import 'sklearn.datasets.tests.test_california_housing'
+74227 INFO: Analyzing hidden import 'sklearn.datasets.tests.test_covtype'
+74238 INFO: Analyzing hidden import 'sklearn.datasets.tests.test_kddcup99'
+74250 INFO: Analyzing hidden import 'sklearn.datasets.tests.test_lfw'
+74267 INFO: Analyzing hidden import 'sklearn.datasets.tests.test_olivetti_faces'
+74278 INFO: Analyzing hidden import 'sklearn.datasets.tests.test_openml'
+74343 INFO: Analyzing hidden import 'sklearn.datasets.tests.test_rcv1'
+74355 INFO: Analyzing hidden import 'sklearn.datasets.tests.test_samples_generator'
+74399 INFO: Analyzing hidden import 'sklearn.datasets.tests.test_svmlight_format'
+74438 INFO: Analyzing hidden import 'sklearn.decomposition.tests'
+74439 INFO: Analyzing hidden import 'sklearn.decomposition.tests.test_dict_learning'
+75300 INFO: Analyzing hidden import 'sklearn.decomposition.tests.test_factor_analysis'
+75315 INFO: Analyzing hidden import 'sklearn.decomposition.tests.test_fastica'
+75346 INFO: Analyzing hidden import 'sklearn.decomposition.tests.test_incremental_pca'
+75376 INFO: Analyzing hidden import 'sklearn.decomposition.tests.test_kernel_pca'
+75407 INFO: Analyzing hidden import 'sklearn.decomposition.tests.test_nmf'
+75458 INFO: Analyzing hidden import 'sklearn.decomposition.tests.test_online_lda'
+75486 INFO: Analyzing hidden import 'sklearn.decomposition.tests.test_pca'
+75546 INFO: Analyzing hidden import 'sklearn.decomposition.tests.test_sparse_pca'
+75572 INFO: Analyzing hidden import 'sklearn.decomposition.tests.test_truncated_svd'
+75623 INFO: Analyzing hidden import 'sklearn.ensemble._hist_gradient_boosting.tests'
+75624 INFO: Analyzing hidden import 'sklearn.ensemble._hist_gradient_boosting.tests.test_binning'
+75659 INFO: Analyzing hidden import 'sklearn.ensemble._hist_gradient_boosting.tests.test_compare_lightgbm'
+75693 INFO: Analyzing hidden import 'sklearn.ensemble._hist_gradient_boosting.tests.test_gradient_boosting'
+75770 INFO: Analyzing hidden import 'sklearn.ensemble._hist_gradient_boosting.tests.test_grower'
+75806 INFO: Analyzing hidden import 'sklearn.ensemble._hist_gradient_boosting.tests.test_histogram'
+75824 INFO: Analyzing hidden import 'sklearn.ensemble._hist_gradient_boosting.tests.test_monotonic_constraints'
+75849 INFO: Analyzing hidden import 'sklearn.ensemble._hist_gradient_boosting.tests.test_predictor'
+75866 INFO: Analyzing hidden import 'sklearn.ensemble._hist_gradient_boosting.tests.test_splitting'
+75907 INFO: Analyzing hidden import 'sklearn.ensemble._hist_gradient_boosting.tests.test_warm_start'
+75924 INFO: Analyzing hidden import 'sklearn.ensemble.tests'
+75925 INFO: Analyzing hidden import 'sklearn.ensemble.tests.test_bagging'
+75980 INFO: Analyzing hidden import 'sklearn.ensemble.tests.test_base'
+75996 INFO: Analyzing hidden import 'sklearn.ensemble.tests.test_bootstrap'
+76008 INFO: Analyzing hidden import 'sklearn.ensemble.tests.test_common'
+76028 INFO: Analyzing hidden import 'sklearn.ensemble.tests.test_forest'
+76124 INFO: Analyzing hidden import 'sklearn.ensemble.tests.test_gradient_boosting'
+76227 INFO: Analyzing hidden import 'sklearn.ensemble.tests.test_iforest'
+76255 INFO: Analyzing hidden import 'sklearn.ensemble.tests.test_stacking'
+76302 INFO: Analyzing hidden import 'sklearn.ensemble.tests.test_voting'
+76347 INFO: Analyzing hidden import 'sklearn.ensemble.tests.test_weight_boosting'
+76386 INFO: Analyzing hidden import 'sklearn.experimental.enable_hist_gradient_boosting'
+76394 INFO: Analyzing hidden import 'sklearn.experimental.enable_iterative_imputer'
+76403 INFO: Analyzing hidden import 'sklearn.experimental.tests'
+76404 INFO: Analyzing hidden import 'sklearn.experimental.tests.test_enable_hist_gradient_boosting'
+76413 INFO: Analyzing hidden import 'sklearn.experimental.tests.test_enable_iterative_imputer'
+76424 INFO: Analyzing hidden import 'sklearn.experimental.tests.test_enable_successive_halving'
+76434 INFO: Analyzing hidden import 'sklearn.externals.array_api_compat.common._fft'
+76452 INFO: Analyzing hidden import 'sklearn.externals.array_api_compat.numpy.fft'
+76463 INFO: Analyzing hidden import 'sklearn.externals.array_api_extra._lib._backends'
+76476 INFO: Analyzing hidden import 'sklearn.externals.array_api_extra._lib._testing'
+76495 INFO: Analyzing hidden import 'sklearn.externals.array_api_extra.testing'
+76516 INFO: Analyzing hidden import 'sklearn.externals.conftest'
+76525 INFO: Analyzing hidden import 'sklearn.feature_extraction.tests'
+76526 INFO: Analyzing hidden import 'sklearn.feature_extraction.tests.test_dict_vectorizer'
+76548 INFO: Analyzing hidden import 'sklearn.feature_extraction.tests.test_feature_hasher'
+76567 INFO: Analyzing hidden import 'sklearn.feature_extraction.tests.test_image'
+76595 INFO: Analyzing hidden import 'sklearn.feature_extraction.tests.test_text'
+76670 INFO: Analyzing hidden import 'sklearn.feature_selection.tests'
+76671 INFO: Analyzing hidden import 'sklearn.feature_selection.tests.test_base'
+76689 INFO: Analyzing hidden import 'sklearn.feature_selection.tests.test_chi2'
+76703 INFO: Analyzing hidden import 'sklearn.feature_selection.tests.test_feature_select'
+76754 INFO: Analyzing hidden import 'sklearn.feature_selection.tests.test_from_model'
+76797 INFO: Analyzing hidden import 'sklearn.feature_selection.tests.test_mutual_info'
+76849 INFO: Analyzing hidden import 'sklearn.feature_selection.tests.test_rfe'
+76896 INFO: Analyzing hidden import 'sklearn.feature_selection.tests.test_sequential'
+76918 INFO: Analyzing hidden import 'sklearn.feature_selection.tests.test_variance_threshold'
+76931 INFO: Analyzing hidden import 'sklearn.frozen.tests'
+76932 INFO: Analyzing hidden import 'sklearn.frozen.tests.test_frozen'
+76953 INFO: Analyzing hidden import 'sklearn.gaussian_process.tests'
+76954 INFO: Analyzing hidden import 'sklearn.gaussian_process.tests._mini_sequence_kernel'
+76966 INFO: Analyzing hidden import 'sklearn.gaussian_process.tests.test_gpc'
+76994 INFO: Analyzing hidden import 'sklearn.gaussian_process.tests.test_gpr'
+77038 INFO: Analyzing hidden import 'sklearn.gaussian_process.tests.test_kernels'
+77065 INFO: Analyzing hidden import 'sklearn.impute.tests'
+77065 INFO: Analyzing hidden import 'sklearn.impute.tests.test_base'
+77081 INFO: Analyzing hidden import 'sklearn.impute.tests.test_common'
+77099 INFO: Analyzing hidden import 'sklearn.impute.tests.test_impute'
+77193 INFO: Analyzing hidden import 'sklearn.impute.tests.test_knn'
+77228 INFO: Analyzing hidden import 'sklearn.inspection'
+77356 INFO: Analyzing hidden import 'sklearn.inspection._plot.tests'
+77356 INFO: Analyzing hidden import 'sklearn.inspection._plot.tests.test_boundary_decision_display'
+77405 INFO: Analyzing hidden import 'sklearn.inspection._plot.tests.test_plot_partial_dependence'
+77493 INFO: Analyzing hidden import 'sklearn.inspection.tests'
+77494 INFO: Analyzing hidden import 'sklearn.inspection.tests.test_partial_dependence'
+77699 INFO: Analyzing hidden import 'sklearn.inspection.tests.test_pd_utils'
+77711 INFO: Analyzing hidden import 'sklearn.inspection.tests.test_permutation_importance'
+77742 INFO: Analyzing hidden import 'sklearn.kernel_ridge'
+77758 INFO: Analyzing hidden import 'sklearn.linear_model._glm.tests'
+77760 INFO: Analyzing hidden import 'sklearn.linear_model._glm.tests.test_glm'
+77818 INFO: Analyzing hidden import 'sklearn.linear_model.tests'
+77819 INFO: Analyzing hidden import 'sklearn.linear_model.tests.test_base'
+77867 INFO: Analyzing hidden import 'sklearn.linear_model.tests.test_bayes'
+77893 INFO: Analyzing hidden import 'sklearn.linear_model.tests.test_common'
+77919 INFO: Analyzing hidden import 'sklearn.linear_model.tests.test_coordinate_descent'
+78012 INFO: Analyzing hidden import 'sklearn.linear_model.tests.test_huber'
+78032 INFO: Analyzing hidden import 'sklearn.linear_model.tests.test_least_angle'
+78078 INFO: Analyzing hidden import 'sklearn.linear_model.tests.test_linear_loss'
+78109 INFO: Analyzing hidden import 'sklearn.linear_model.tests.test_logistic'
+78242 INFO: Analyzing hidden import 'sklearn.linear_model.tests.test_omp'
+78266 INFO: Analyzing hidden import 'sklearn.linear_model.tests.test_passive_aggressive'
+78293 INFO: Analyzing hidden import 'sklearn.linear_model.tests.test_perceptron'
+78307 INFO: Analyzing hidden import 'sklearn.linear_model.tests.test_quantile'
+78330 INFO: Analyzing hidden import 'sklearn.linear_model.tests.test_ransac'
+78361 INFO: Analyzing hidden import 'sklearn.linear_model.tests.test_ridge'
+78489 INFO: Analyzing hidden import 'sklearn.linear_model.tests.test_sag'
+78531 INFO: Analyzing hidden import 'sklearn.linear_model.tests.test_sgd'
+78639 INFO: Analyzing hidden import 'sklearn.linear_model.tests.test_sparse_coordinate_descent'
+78667 INFO: Analyzing hidden import 'sklearn.linear_model.tests.test_theil_sen'
+78691 INFO: Analyzing hidden import 'sklearn.manifold.tests'
+78691 INFO: Analyzing hidden import 'sklearn.manifold.tests.test_classical_mds'
+78704 INFO: Analyzing hidden import 'sklearn.manifold.tests.test_isomap'
+78728 INFO: Analyzing hidden import 'sklearn.manifold.tests.test_locally_linear'
+78745 INFO: Analyzing hidden import 'sklearn.manifold.tests.test_mds'
+78768 INFO: Analyzing hidden import 'sklearn.manifold.tests.test_spectral_embedding'
+78800 INFO: Analyzing hidden import 'sklearn.manifold.tests.test_t_sne'
+78851 INFO: Analyzing hidden import 'sklearn.metrics._pairwise_distances_reduction._datasets_pair'
+78852 INFO: Analyzing hidden import 'sklearn.metrics._pairwise_distances_reduction._middle_term_computer'
+78852 INFO: Analyzing hidden import 'sklearn.metrics._plot.tests'
+78853 INFO: Analyzing hidden import 'sklearn.metrics._plot.tests.test_common_curve_display'
+78901 INFO: Analyzing hidden import 'sklearn.metrics._plot.tests.test_confusion_matrix_display'
+78930 INFO: Analyzing hidden import 'sklearn.metrics._plot.tests.test_det_curve_display'
+78946 INFO: Analyzing hidden import 'sklearn.metrics._plot.tests.test_precision_recall_display'
+78984 INFO: Analyzing hidden import 'sklearn.metrics._plot.tests.test_predict_error_display'
+79001 INFO: Analyzing hidden import 'sklearn.metrics._plot.tests.test_roc_curve_display'
+79034 INFO: Analyzing hidden import 'sklearn.metrics.cluster.tests'
+79035 INFO: Analyzing hidden import 'sklearn.metrics.cluster.tests.test_bicluster'
+79048 INFO: Analyzing hidden import 'sklearn.metrics.cluster.tests.test_common'
+79177 INFO: Analyzing hidden import 'sklearn.metrics.cluster.tests.test_supervised'
+79213 INFO: Analyzing hidden import 'sklearn.metrics.cluster.tests.test_unsupervised'
+79239 INFO: Analyzing hidden import 'sklearn.metrics.tests.test_classification'
+79419 INFO: Analyzing hidden import 'sklearn.metrics.tests.test_pairwise'
+79517 INFO: Analyzing hidden import 'sklearn.metrics.tests.test_pairwise_distances_reduction'
+79588 INFO: Analyzing hidden import 'sklearn.metrics.tests.test_ranking'
+79731 INFO: Analyzing hidden import 'sklearn.metrics.tests.test_regression'
+79775 INFO: Analyzing hidden import 'sklearn.metrics.tests.test_score_objects'
+79855 INFO: Analyzing hidden import 'sklearn.mixture.tests'
+79856 INFO: Analyzing hidden import 'sklearn.mixture.tests.test_bayesian_mixture'
+79960 INFO: Analyzing hidden import 'sklearn.mixture.tests.test_mixture'
+79971 INFO: Analyzing hidden import 'sklearn.model_selection.tests'
+79973 INFO: Analyzing hidden import 'sklearn.model_selection.tests.common'
+79983 INFO: Analyzing hidden import 'sklearn.model_selection.tests.test_classification_threshold'
+80017 INFO: Analyzing hidden import 'sklearn.model_selection.tests.test_plot'
+80053 INFO: Analyzing hidden import 'sklearn.model_selection.tests.test_search'
+80203 INFO: Analyzing hidden import 'sklearn.model_selection.tests.test_split'
+80327 INFO: Analyzing hidden import 'sklearn.model_selection.tests.test_successive_halving'
+80369 INFO: Analyzing hidden import 'sklearn.model_selection.tests.test_validation'
+80493 INFO: Analyzing hidden import 'sklearn.neighbors._partition_nodes'
+80494 INFO: Analyzing hidden import 'sklearn.neighbors._quad_tree'
+80495 INFO: Analyzing hidden import 'sklearn.neighbors.tests'
+80495 INFO: Analyzing hidden import 'sklearn.neighbors.tests.test_ball_tree'
+80516 INFO: Analyzing hidden import 'sklearn.neighbors.tests.test_graph'
+80530 INFO: Analyzing hidden import 'sklearn.neighbors.tests.test_kd_tree'
+80545 INFO: Analyzing hidden import 'sklearn.neighbors.tests.test_kde'
+80568 INFO: Analyzing hidden import 'sklearn.neighbors.tests.test_lof'
+80596 INFO: Analyzing hidden import 'sklearn.neighbors.tests.test_nca'
+80631 INFO: Analyzing hidden import 'sklearn.neighbors.tests.test_nearest_centroid'
+80651 INFO: Analyzing hidden import 'sklearn.neighbors.tests.test_neighbors'
+80773 INFO: Analyzing hidden import 'sklearn.neighbors.tests.test_neighbors_pipeline'
+80790 INFO: Analyzing hidden import 'sklearn.neighbors.tests.test_neighbors_tree'
+80814 INFO: Analyzing hidden import 'sklearn.neighbors.tests.test_quad_tree'
+80830 INFO: Analyzing hidden import 'sklearn.neural_network.tests'
+80831 INFO: Analyzing hidden import 'sklearn.neural_network.tests.test_base'
+80843 INFO: Analyzing hidden import 'sklearn.neural_network.tests.test_mlp'
+80897 INFO: Analyzing hidden import 'sklearn.neural_network.tests.test_rbm'
+80917 INFO: Analyzing hidden import 'sklearn.neural_network.tests.test_stochastic_optimizers'
+80934 INFO: Analyzing hidden import 'sklearn.preprocessing.tests'
+80935 INFO: Analyzing hidden import 'sklearn.preprocessing.tests.test_common'
+80954 INFO: Analyzing hidden import 'sklearn.preprocessing.tests.test_data'
+81112 INFO: Analyzing hidden import 'sklearn.preprocessing.tests.test_discretization'
+81147 INFO: Analyzing hidden import 'sklearn.preprocessing.tests.test_encoders'
+81283 INFO: Analyzing hidden import 'sklearn.preprocessing.tests.test_function_transformer'
+81321 INFO: Analyzing hidden import 'sklearn.preprocessing.tests.test_label'
+81378 INFO: Analyzing hidden import 'sklearn.preprocessing.tests.test_polynomial'
+81442 INFO: Analyzing hidden import 'sklearn.preprocessing.tests.test_target_encoder'
+81483 INFO: Analyzing hidden import 'sklearn.semi_supervised.tests'
+81484 INFO: Analyzing hidden import 'sklearn.semi_supervised.tests.test_label_propagation'
+81509 INFO: Analyzing hidden import 'sklearn.semi_supervised.tests.test_self_training'
+81668 INFO: Analyzing hidden import 'sklearn.svm._newrand'
+81669 INFO: Analyzing hidden import 'sklearn.svm.tests'
+81670 INFO: Analyzing hidden import 'sklearn.svm.tests.test_bounds'
+81686 INFO: Analyzing hidden import 'sklearn.svm.tests.test_sparse'
+81799 INFO: Analyzing hidden import 'sklearn.tests.test_base'
+81859 INFO: Analyzing hidden import 'sklearn.tests.test_build'
+81873 INFO: Analyzing hidden import 'sklearn.tests.test_calibration'
+81941 INFO: Analyzing hidden import 'sklearn.tests.test_check_build'
+81950 INFO: Analyzing hidden import 'sklearn.tests.test_common'
+81976 INFO: Analyzing hidden import 'sklearn.tests.test_config'
+81995 INFO: Analyzing hidden import 'sklearn.tests.test_discriminant_analysis'
+82041 INFO: Analyzing hidden import 'sklearn.tests.test_docstring_parameters'
+82066 INFO: Analyzing hidden import 'sklearn.tests.test_docstring_parameters_consistency'
+82079 INFO: Analyzing hidden import 'sklearn.tests.test_docstrings'
+82096 INFO: Analyzing hidden import 'sklearn.tests.test_dummy'
+82142 INFO: Analyzing hidden import 'sklearn.tests.test_init'
+82151 INFO: Analyzing hidden import 'sklearn.tests.test_isotonic'
+82193 INFO: Analyzing hidden import 'sklearn.tests.test_kernel_approximation'
+82225 INFO: Analyzing hidden import 'sklearn.tests.test_kernel_ridge'
+82239 INFO: Analyzing hidden import 'sklearn.tests.test_metadata_routing'
+82295 INFO: Analyzing hidden import 'sklearn.tests.test_metaestimators'
+82317 INFO: Analyzing hidden import 'sklearn.tests.test_metaestimators_metadata_routing'
+82356 INFO: Analyzing hidden import 'sklearn.tests.test_min_dependencies_readme'
+82372 INFO: Analyzing hidden import 'sklearn.tests.test_multiclass'
+82430 INFO: Analyzing hidden import 'sklearn.tests.test_multioutput'
+82480 INFO: Analyzing hidden import 'sklearn.tests.test_naive_bayes'
+82539 INFO: Analyzing hidden import 'sklearn.tests.test_public_functions'
+82560 INFO: Analyzing hidden import 'sklearn.tests.test_random_projection'
+82591 INFO: Analyzing hidden import 'sklearn.tree._partitioner'
+82591 INFO: Analyzing hidden import 'sklearn.tree.tests.test_export'
+82621 INFO: Analyzing hidden import 'sklearn.tree.tests.test_fenwick'
+82632 INFO: Analyzing hidden import 'sklearn.tree.tests.test_monotonic_tree'
+82668 INFO: Analyzing hidden import 'sklearn.tree.tests.test_reingold_tilford'
+82681 INFO: Analyzing hidden import 'sklearn.tree.tests.test_split'
+82702 INFO: Analyzing hidden import 'sklearn.tree.tests.test_swap'
+82713 INFO: Analyzing hidden import 'sklearn.utils._cython_blas'
+82713 INFO: Analyzing hidden import 'sklearn.utils._heap'
+82714 INFO: Analyzing hidden import 'sklearn.utils._repr_html.tests'
+82715 INFO: Analyzing hidden import 'sklearn.utils._repr_html.tests.test_attributes'
+82728 INFO: Analyzing hidden import 'sklearn.utils._repr_html.tests.test_estimator'
+82766 INFO: Analyzing hidden import 'sklearn.utils._repr_html.tests.test_features'
+82788 INFO: Analyzing hidden import 'sklearn.utils._repr_html.tests.test_js'
+82806 INFO: Analyzing hidden import 'sklearn.utils._repr_html.tests.test_params'
+82824 INFO: Analyzing hidden import 'sklearn.utils._sorting'
+82824 INFO: Analyzing hidden import 'sklearn.utils._typedefs'
+82825 INFO: Analyzing hidden import 'sklearn.utils._vector_sentinel'
+82825 INFO: Analyzing hidden import 'sklearn.utils._weight_vector'
+82826 INFO: Analyzing hidden import 'sklearn.utils.tests'
+82826 INFO: Analyzing hidden import 'sklearn.utils.tests.test_arpack'
+82835 INFO: Analyzing hidden import 'sklearn.utils.tests.test_array_api'
+82905 INFO: Analyzing hidden import 'sklearn.utils.tests.test_arrayfuncs'
+82915 INFO: Analyzing hidden import 'sklearn.utils.tests.test_bitset'
+82927 INFO: Analyzing hidden import 'sklearn.utils.tests.test_bunch'
+82936 INFO: Analyzing hidden import 'sklearn.utils.tests.test_chunking'
+82950 INFO: Analyzing hidden import 'sklearn.utils.tests.test_class_weight'
+82976 INFO: Analyzing hidden import 'sklearn.utils.tests.test_cython_blas'
+82997 INFO: Analyzing hidden import 'sklearn.utils.tests.test_dataframe'
+83011 INFO: Analyzing hidden import 'sklearn.utils.tests.test_deprecation'
+83026 INFO: Analyzing hidden import 'sklearn.utils.tests.test_encode'
+83049 INFO: Analyzing hidden import 'sklearn.utils.tests.test_estimator_checks'
+83137 INFO: Analyzing hidden import 'sklearn.utils.tests.test_extmath'
+83200 INFO: Analyzing hidden import 'sklearn.utils.tests.test_fast_dict'
+83212 INFO: Analyzing hidden import 'sklearn.utils.tests.test_fixes'
+83228 INFO: Analyzing hidden import 'sklearn.utils.tests.test_graph'
+83241 INFO: Analyzing hidden import 'sklearn.utils.tests.test_indexing'
+83286 INFO: Analyzing hidden import 'sklearn.utils.tests.test_mask'
+83296 INFO: Analyzing hidden import 'sklearn.utils.tests.test_metaestimators'
+83309 INFO: Analyzing hidden import 'sklearn.utils.tests.test_missing'
+83318 INFO: Analyzing hidden import 'sklearn.utils.tests.test_mocking'
+83338 INFO: Analyzing hidden import 'sklearn.utils.tests.test_multiclass'
+83383 INFO: Analyzing hidden import 'sklearn.utils.tests.test_murmurhash'
+83396 INFO: Analyzing hidden import 'sklearn.utils.tests.test_optimize'
+83455 INFO: Analyzing hidden import 'sklearn.utils.tests.test_parallel'
+83476 INFO: Analyzing hidden import 'sklearn.utils.tests.test_param_validation'
+83517 INFO: Analyzing hidden import 'sklearn.utils.tests.test_plotting'
+83554 INFO: Analyzing hidden import 'sklearn.utils.tests.test_pprint'
+83583 INFO: Analyzing hidden import 'sklearn.utils.tests.test_random'
+83603 INFO: Analyzing hidden import 'sklearn.utils.tests.test_response'
+83631 INFO: Analyzing hidden import 'sklearn.utils.tests.test_seq_dataset'
+83650 INFO: Analyzing hidden import 'sklearn.utils.tests.test_set_output'
+83683 INFO: Analyzing hidden import 'sklearn.utils.tests.test_shortest_path'
+83696 INFO: Analyzing hidden import 'sklearn.utils.tests.test_show_versions'
+83706 INFO: Analyzing hidden import 'sklearn.utils.tests.test_sorting'
+83718 INFO: Analyzing hidden import 'sklearn.utils.tests.test_sparse'
+83732 INFO: Analyzing hidden import 'sklearn.utils.tests.test_sparsefuncs'
+83796 INFO: Analyzing hidden import 'sklearn.utils.tests.test_stats'
+83824 INFO: Analyzing hidden import 'sklearn.utils.tests.test_tags'
+83841 INFO: Analyzing hidden import 'sklearn.utils.tests.test_testing'
+83892 INFO: Analyzing hidden import 'sklearn.utils.tests.test_typedefs'
+83901 INFO: Analyzing hidden import 'sklearn.utils.tests.test_unique'
+83914 INFO: Analyzing hidden import 'sklearn.utils.tests.test_user_interface'
+83926 INFO: Analyzing hidden import 'sklearn.utils.tests.test_validation'
+84061 INFO: Analyzing hidden import 'sklearn.utils.tests.test_weight_vector'
+84072 INFO: Processing module hooks (post-graph stage)...
+84495 INFO: Processing standard module hook 'hook-lxml.isoschematron.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+84637 WARNING: Hidden import "jinja2" not found!
+84695 WARNING: Hidden import "scipy.special._cdflib" not found!
+85431 INFO: Processing standard module hook 'hook-_tkinter.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+85433 INFO: Processing standard module hook 'hook-lxml.objectify.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+85434 INFO: Processing standard module hook 'hook-tzdata.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+85993 INFO: Performing binary vs. data reclassification (2549 entries)
+98397 INFO: Looking for ctypes DLLs
+98590 INFO: Analyzing run-time hooks ...
+98600 INFO: Including run-time hook 'pyi_rth_pkgutil.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+98612 INFO: Including run-time hook 'pyi_rth_multiprocessing.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+98625 INFO: Including run-time hook 'pyi_rth_inspect.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+98639 INFO: Including run-time hook 'pyi_rth_setuptools.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+98651 INFO: Including run-time hook 'pyi_rth__tkinter.py' from 'C:\\trading\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+98745 INFO: Creating base_library.zip...
+98767 INFO: Looking for dynamic libraries
+101511 INFO: Extra DLL search directories (AddDllDirectory): ['C:\\trading\\.venv\\Lib\\site-packages\\pandas.libs', 'C:\\trading\\.venv\\Lib\\site-packages\\numpy.libs', 'C:\\trading\\.venv\\Lib\\site-packages\\scipy.libs']
+101574 INFO: Extra DLL search directories (PATH): []
+104173 INFO: Warnings written to C:\trading\build\AITradingDesktop\warn-AITradingDesktop.txt
+104476 INFO: Graph cross-reference written to C:\trading\build\AITradingDesktop\xref-AITradingDesktop.html
+104653 INFO: checking PYZ
+104653 INFO: Building PYZ because PYZ-00.toc is non existent
+104653 INFO: Building PYZ (ZlibArchive) C:\trading\build\AITradingDesktop\PYZ-00.pyz
+105965 INFO: Building PYZ (ZlibArchive) C:\trading\build\AITradingDesktop\PYZ-00.pyz completed successfully.
+106099 INFO: checking PKG
+106100 INFO: Building PKG because PKG-00.toc is non existent
+106100 INFO: Building PKG (CArchive) AITradingDesktop.pkg
+114401 INFO: Building PKG (CArchive) AITradingDesktop.pkg completed successfully.
+114448 INFO: Bootloader C:\trading\.venv\Lib\site-packages\PyInstaller\bootloader\Windows-64bit-intel\runw.exe
+114448 INFO: checking EXE
+114448 INFO: Building EXE because EXE-00.toc is non existent
+114449 INFO: Building EXE from EXE-00.toc
+114450 INFO: Copying bootloader EXE to C:\trading\dist\AITradingDesktop.exe
+114538 INFO: Copying icon to EXE
+114600 INFO: Copying version information to EXE
+114656 INFO: Copying 0 resources to EXE
+114657 INFO: Embedding manifest in EXE
+114715 INFO: Appending PKG archive to EXE
+114778 INFO: Fixing EXE headers
+115303 INFO: Building EXE from EXE-00.toc completed successfully.
+115358 INFO: Build complete! The results are available in: C:\trading\dist

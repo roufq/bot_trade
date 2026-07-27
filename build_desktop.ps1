@@ -46,7 +46,7 @@ $isccCandidates = @(
 $iscc = $isccCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
 if ($iscc) {
     & $iscc "$PSScriptRoot\installer.iss"
-    Write-Host "Installer selesai: $PSScriptRoot\installer_output\AITradingDesktop-Setup-1.2.2.exe"
+    Write-Host "Installer selesai: $PSScriptRoot\installer_output\AITradingDesktop-Setup-1.2.4.exe"
 }
 else {
     Write-Warning "Inno Setup belum tersedia; EXE portable selesai tetapi Setup.exe belum dibuat."

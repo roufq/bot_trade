@@ -36,14 +36,20 @@ import shadow_tracker
 
 _last_evaluated_entry_bar = None
 _last_console_status = None
+_last_console_status_time = 0.0
 
 
 def print_status(message: str) -> None:
-    """Cetak status hanya saat isinya berubah agar loop 1 detik tidak membanjiri terminal."""
-    global _last_console_status
-    if message != _last_console_status:
+    """Cetak perubahan status; status sama diulang berkala agar bot tampak aktif."""
+    global _last_console_status, _last_console_status_time
+    now = time.time()
+    if (
+        message != _last_console_status
+        or now - _last_console_status_time >= config.STATUS_REPEAT_SECONDS
+    ):
         print(f"[{datetime.now()}] {message}")
         _last_console_status = message
+        _last_console_status_time = now
 
 
 def is_within_trading_hours() -> bool:
@@ -67,20 +73,20 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
 
     equity_now = account["equity"]
     _, weekly_dd, peak_dd = runtime_guard.update_equity_state(equity_now)
+    risk_limit_reason = ""
     if weekly_dd >= config.MAX_WEEKLY_DRAWDOWN_PERCENT:
-        trade_logger.log_system_event("weekly_drawdown_limit", f"drawdown={weekly_dd:.2f}%")
-        notifier.notify_error(f"Bot berhenti: drawdown mingguan {weekly_dd:.2f}%")
-        raise SystemExit(f"Drawdown mingguan {weekly_dd:.2f}% mencapai batas.")
-    if peak_dd >= config.MAX_EQUITY_PEAK_DRAWDOWN_PERCENT:
-        trade_logger.log_system_event("peak_drawdown_limit", f"drawdown={peak_dd:.2f}%")
-        notifier.notify_error(f"Bot berhenti: drawdown equity peak {peak_dd:.2f}%")
-        raise SystemExit(f"Drawdown dari equity peak {peak_dd:.2f}% mencapai batas.")
+        risk_limit_reason = (
+            f"drawdown mingguan {weekly_dd:.2f}% mencapai batas "
+            f"{config.MAX_WEEKLY_DRAWDOWN_PERCENT:.2f}%"
+        )
+    elif peak_dd >= config.MAX_EQUITY_PEAK_DRAWDOWN_PERCENT:
+        risk_limit_reason = (
+            f"drawdown dari equity peak {peak_dd:.2f}% mencapai batas "
+            f"{config.MAX_EQUITY_PEAK_DRAWDOWN_PERCENT:.2f}%"
+        )
     limit_hit, drawdown_pct = risk_manager.check_daily_drawdown(equity_start_of_day, equity_now)
-    if limit_hit:
-        print(f"[{datetime.now()}] Drawdown harian {drawdown_pct:.2f}% >= limit. Bot berhenti untuk hari ini.")
-        trade_logger.log_system_event("daily_drawdown_limit", f"drawdown={drawdown_pct:.2f}%")
-        notifier.notify_daily_drawdown_hit(drawdown_pct)
-        raise SystemExit("Drawdown harian tersentuh, bot dihentikan.")
+    if limit_hit and not risk_limit_reason:
+        risk_limit_reason = f"drawdown harian {drawdown_pct:.2f}% mencapai batas"
 
     # 2b. Deteksi posisi yang baru tertutup sejak siklus sebelumnya
     open_positions = mt5_connector.get_open_positions(config.SYMBOL)
@@ -175,6 +181,12 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
         atr_now = float(atr_series.iloc[-1]) if not atr_series.empty else 0.0
     for event in position_manager.manage(open_positions, atr_now, ask_price, bid_price, symbol_info):
         trade_logger.log_system_event("position_management", event)
+
+    # Batas risiko mencegah entry baru, tetapi engine harus tetap berjalan agar
+    # trailing stop/break-even dan pencatatan posisi yang sudah terbuka berfungsi.
+    if risk_limit_reason:
+        print_status(f"Entry diblokir batas risiko; posisi terbuka tetap dikelola: {risk_limit_reason}.")
+        return current_tickets
 
     blackout, blackout_reason = market_filters.in_news_blackout()
     if blackout:

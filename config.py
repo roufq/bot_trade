@@ -93,7 +93,9 @@ MIN_ROLLING_PROFIT_FACTOR = 0.80
 MIN_ROLLING_EXPECTANCY = 0.0
 ROLLING_KILL_SWITCH_COOLDOWN_MINUTES = 10
 ROLLING_DEGRADED_RISK_MULTIPLIER = 0.60
-ROLLING_DEGRADED_ENTRY_THRESHOLD_BONUS = 0.10
+ROLLING_DEGRADED_ENTRY_THRESHOLD_BONUS = _env_float(
+    "TRADING_PROBE_ENTRY_THRESHOLD_BONUS", 0.02
+)
 MAX_REALIZED_LOSS_TO_PLANNED_RISK = 1.50
 OVERSIZED_LOSS_COOLDOWN_MINUTES = 10
 MAX_ORDER_DEVIATION_POINTS = 20
@@ -111,7 +113,9 @@ CONTINUATION_PULLBACK_ATR_MULTIPLIER = 0.5  # pullback lebih ketat (harus sangat
 ALLOW_AGGRESSIVE_MOMENTUM_ENTRIES = True  # Boleh masuk saat tren sudah valid walau belum ada crossover
 AGGRESSIVE_ENTRY_RSI_THRESHOLD = 55  # RSI minimal untuk entry momentum
 AGGRESSIVE_ENTRY_ATR_DISTANCE = 0.6  # jarak maksimum dari EMA cepat dalam satuan ATR untuk entry momentum
-ENTRY_CLOSE_TO_EMA_MAX_ATR_MULTIPLIER = 0.25  # entry harus sangat dekat EMA cepat untuk mengurangi false breakouts
+ENTRY_CLOSE_TO_EMA_MAX_ATR_MULTIPLIER = _env_float(
+    "TRADING_MOMENTUM_MAX_DISTANCE_ATR", 0.55
+)  # cukup responsif menangkap awal momentum, tetap mencegah mengejar harga terlalu jauh
 TREND_RSI_CONFIRMATION_THRESHOLD = 52  # konfirmasi tren dengan RSI di timeframe trend
 
 # =========================================================
@@ -128,9 +132,13 @@ SOFT_SPREAD_ATR_RATIO = 0.20
 VERY_HIGH_SPREAD_ATR_RATIO = 0.25
 MAX_SPREAD_ATR_RATIO = _env_float("TRADING_MAX_SPREAD_ATR_RATIO", 0.35)
 HIGH_SPREAD_RISK_MULTIPLIER = 0.85
-HIGH_SPREAD_ENTRY_THRESHOLD_BONUS = 0.05
+HIGH_SPREAD_ENTRY_THRESHOLD_BONUS = _env_float(
+    "TRADING_HIGH_SPREAD_THRESHOLD_BONUS", 0.01
+)
 VERY_HIGH_SPREAD_RISK_MULTIPLIER = 0.65
-VERY_HIGH_SPREAD_ENTRY_THRESHOLD_BONUS = 0.10
+VERY_HIGH_SPREAD_ENTRY_THRESHOLD_BONUS = _env_float(
+    "TRADING_VERY_HIGH_SPREAD_THRESHOLD_BONUS", 0.03
+)
 MAX_TICK_AGE_SECONDS = 10
 MIN_FREE_MARGIN_AFTER_ORDER_PERCENT = 50.0
 VOLATILITY_FILTER_ENABLED = True
@@ -167,6 +175,7 @@ TRADING_HOUR_END = _env_int("TRADING_HOUR_END", 24)
 # SIKLUS & LOGGING
 # =========================================================
 CHECK_INTERVAL_SECONDS = 1   # hyper scalping memerlukan polling sangat cepat
+STATUS_REPEAT_SECONDS = 300  # ulangi alasan sama tiap 5 menit agar monitoring jelas
 TRADE_LOG_FILE = _data_file("trade_log.csv")
 SYSTEM_LOG_FILE = _data_file("system_log.csv")
 SHADOW_SIGNAL_LOG_FILE = _data_file("shadow_signal_log.csv")

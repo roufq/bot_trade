@@ -16,7 +16,7 @@ from tkinter import filedialog, messagebox, ttk
 
 
 APP_TITLE = "AI Trading Desktop"
-APP_VERSION = "1.2.2"
+APP_VERSION = "1.2.4"
 COLORS = {
     "bg": "#0B1220", "surface": "#111B2E", "surface_alt": "#17233A",
     "border": "#24324A", "text": "#E8EEF8", "muted": "#91A0B8",
@@ -73,6 +73,10 @@ SETTING_FIELDS = [
     ("Stop Loss × ATR", "TRADING_SL_ATR_MULTIPLIER", "1.2", False),
     ("Take Profit × ATR", "TRADING_TP_ATR_MULTIPLIER", "1.8", False),
     ("Jarak minimum entry (ATR)", "TRADING_MIN_ENTRY_DISTANCE_ATR", "0.5", False),
+    ("Jarak maksimum momentum (ATR)", "TRADING_MOMENTUM_MAX_DISTANCE_ATR", "0.55", False),
+    ("Tambahan threshold mode probe", "TRADING_PROBE_ENTRY_THRESHOLD_BONUS", "0.02", False),
+    ("Tambahan threshold spread tinggi", "TRADING_HIGH_SPREAD_THRESHOLD_BONUS", "0.01", False),
+    ("Tambahan threshold spread sangat tinggi", "TRADING_VERY_HIGH_SPREAD_THRESHOLD_BONUS", "0.03", False),
     ("EMA tren cepat", "TRADING_EMA_TREND_FAST", "20", False),
     ("EMA tren lambat", "TRADING_EMA_TREND_SLOW", "50", False),
     ("EMA entry cepat", "TRADING_EMA_ENTRY_FAST", "5", False),
@@ -109,18 +113,30 @@ TRADING_PRESETS = {
         "TRADING_RISK_PERCENT": "0.35", "TRADING_MAX_OPEN_POSITIONS": "2",
         "TRADING_MAX_POSITIONS_PER_DIRECTION": "1", "TRADING_SL_ATR_MULTIPLIER": "1.4",
         "TRADING_TP_ATR_MULTIPLIER": "2.1", "TRADING_MIN_ENTRY_DISTANCE_ATR": "0.8",
+        "TRADING_MOMENTUM_MAX_DISTANCE_ATR": "0.35",
+        "TRADING_PROBE_ENTRY_THRESHOLD_BONUS": "0.08",
+        "TRADING_HIGH_SPREAD_THRESHOLD_BONUS": "0.04",
+        "TRADING_VERY_HIGH_SPREAD_THRESHOLD_BONUS": "0.08",
         "TRADING_RSI_BUY_MIN": "58", "TRADING_RSI_SELL_MAX": "42",
     },
     "Seimbang": {
         "TRADING_RISK_PERCENT": "0.50", "TRADING_MAX_OPEN_POSITIONS": "3",
         "TRADING_MAX_POSITIONS_PER_DIRECTION": "2", "TRADING_SL_ATR_MULTIPLIER": "1.2",
         "TRADING_TP_ATR_MULTIPLIER": "1.8", "TRADING_MIN_ENTRY_DISTANCE_ATR": "0.5",
+        "TRADING_MOMENTUM_MAX_DISTANCE_ATR": "0.55",
+        "TRADING_PROBE_ENTRY_THRESHOLD_BONUS": "0.05",
+        "TRADING_HIGH_SPREAD_THRESHOLD_BONUS": "0.02",
+        "TRADING_VERY_HIGH_SPREAD_THRESHOLD_BONUS": "0.05",
         "TRADING_RSI_BUY_MIN": "55", "TRADING_RSI_SELL_MAX": "45",
     },
     "Aktif": {
         "TRADING_RISK_PERCENT": "0.60", "TRADING_MAX_OPEN_POSITIONS": "3",
         "TRADING_MAX_POSITIONS_PER_DIRECTION": "2", "TRADING_SL_ATR_MULTIPLIER": "1.1",
         "TRADING_TP_ATR_MULTIPLIER": "1.65", "TRADING_MIN_ENTRY_DISTANCE_ATR": "0.35",
+        "TRADING_MOMENTUM_MAX_DISTANCE_ATR": "0.70",
+        "TRADING_PROBE_ENTRY_THRESHOLD_BONUS": "0.02",
+        "TRADING_HIGH_SPREAD_THRESHOLD_BONUS": "0.01",
+        "TRADING_VERY_HIGH_SPREAD_THRESHOLD_BONUS": "0.03",
         "TRADING_RSI_BUY_MIN": "53", "TRADING_RSI_SELL_MAX": "47",
     },
 }
@@ -141,6 +157,10 @@ def validate_settings(values: dict[str, str]) -> list[str]:
         "TRADING_SL_ATR_MULTIPLIER": (0.2, 10.0),
         "TRADING_TP_ATR_MULTIPLIER": (0.2, 20.0),
         "TRADING_MIN_ENTRY_DISTANCE_ATR": (0.0, 5.0),
+        "TRADING_MOMENTUM_MAX_DISTANCE_ATR": (0.1, 1.5),
+        "TRADING_PROBE_ENTRY_THRESHOLD_BONUS": (0.0, 0.30),
+        "TRADING_HIGH_SPREAD_THRESHOLD_BONUS": (0.0, 0.30),
+        "TRADING_VERY_HIGH_SPREAD_THRESHOLD_BONUS": (0.0, 0.30),
         "TRADING_RSI_BUY_MIN": (0.0, 100.0),
         "TRADING_RSI_BUY_MAX": (0.0, 100.0),
         "TRADING_RSI_SELL_MIN": (0.0, 100.0),

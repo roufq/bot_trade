@@ -73,7 +73,7 @@ menjalankan aplikasi desktop. Panduan source dan build EXE tersedia di
 [DESKTOP_SETUP.md](DESKTOP_SETUP.md).
 
 Paket untuk komputer tanpa Python dibuat sebagai
-`installer_output/AITradingDesktop-Setup-1.2.2.exe`. MetaTrader 5 tetap wajib
+`installer_output/AITradingDesktop-Setup-1.2.4.exe`. MetaTrader 5 tetap wajib
 terpasang dan login.
 
 ## Konfigurasi
@@ -85,12 +85,17 @@ volatilitas, break-even, trailing stop, serta jam trading. Semua nilai divalidas
 sebelum disimpan. Preset maupun konfigurasi manual tidak menjamin profit; proteksi
 risiko internal tetap aktif.
 
-Versi 1.2.2 memakai satu **Folder data terpadu** untuk engine source dan
+Versi 1.2.4 memakai satu **Folder data terpadu** untuk engine source dan
 desktop. Tombol **Import CSV Pengalaman** menggabungkan entry, closed trade, dan
 shadow signal berdasarkan ticket tanpa menggandakan pengalaman. Tombol
 **Export CSV Pengalaman** membuat salinan portabel tanpa password MT5, token
 Telegram, atau konfigurasi rahasia. Backup dibuat sebelum import memperbarui
 file tujuan.
+
+Versi 1.2.4 juga menyediakan pengaturan jarak momentum dan tambahan threshold
+probe/spread. Default mode aktif lebih longgar: threshold dasar 0,45 menjadi
+sekitar 0,48 ketika probe dan spread tinggi aktif, sementara target risiko tetap
+diperkecil selama performa rolling melemah.
 
 Sesuaikan konfigurasi berikut:
 
