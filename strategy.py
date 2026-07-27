@@ -27,6 +27,180 @@ class TradeSignal:
     reason: str
     atr_value: Optional[float] = None
     entry_price: Optional[float] = None
+    strategy_source: str = "A_ONLY"
+    strategy_a_signal: Signal = "none"
+    strategy_b_signal: Signal = "none"
+    fvg_timeframe: str = ""
+    fvg_lower: Optional[float] = None
+    fvg_upper: Optional[float] = None
+
+
+@dataclass(frozen=True)
+class FVGZone:
+    direction: Literal["buy", "sell"]
+    lower: float
+    upper: float
+    timeframe: str
+    created_at: object
+    age_bars: int
+
+
+def detect_fvg_zones(
+    df: pd.DataFrame,
+    timeframe: str,
+    max_age_bars: int,
+) -> list[FVGZone]:
+    """Deteksi FVG tiga-candle yang masih aktif, hanya dari candle tertutup."""
+    required = {"time", "open", "high", "low", "close"}
+    if df is None or len(df) < config.ATR_PERIOD + 3 or not required.issubset(df.columns):
+        return []
+
+    work = df.sort_values("time").reset_index(drop=True).copy()
+    work["atr"] = add_all_indicators(
+        work, config.EMA_ENTRY_FAST, config.EMA_ENTRY_SLOW,
+        config.RSI_PERIOD, config.ATR_PERIOD,
+    )["atr"]
+    zones: list[FVGZone] = []
+    start = max(2, len(work) - max_age_bars - 2)
+    for index in range(start, len(work)):
+        first = work.iloc[index - 2]
+        third = work.iloc[index]
+        atr = float(third["atr"])
+        if not pd.notna(atr) or atr <= 0:
+            continue
+        age = len(work) - 1 - index
+        candidates: list[tuple[str, float, float]] = []
+        if float(third["low"]) > float(first["high"]):
+            candidates.append(("buy", float(first["high"]), float(third["low"])))
+        if float(third["high"]) < float(first["low"]):
+            candidates.append(("sell", float(third["high"]), float(first["low"])))
+        for direction, lower, upper in candidates:
+            if upper - lower < atr * config.FVG_MIN_GAP_ATR:
+                continue
+            later = work.iloc[index + 1:]
+            # Zona dianggap selesai setelah sisi jauh telah disentuh penuh.
+            filled = (
+                (not later.empty and float(later["low"].min()) <= lower)
+                if direction == "buy"
+                else (not later.empty and float(later["high"].max()) >= upper)
+            )
+            if not filled:
+                zones.append(FVGZone(direction, lower, upper, timeframe, third["time"], age))
+    return zones
+
+
+def _overlap_zone(first: FVGZone, second: FVGZone) -> Optional[FVGZone]:
+    if first.direction != second.direction:
+        return None
+    lower, upper = max(first.lower, second.lower), min(first.upper, second.upper)
+    if lower > upper:
+        return None
+    return FVGZone(first.direction, lower, upper, "H1+M15", second.created_at, min(first.age_bars, second.age_bars))
+
+
+def _m1_rejection(df_m1: pd.DataFrame, zone: FVGZone) -> bool:
+    if df_m1 is None or df_m1.empty:
+        return False
+    candle = df_m1.sort_values("time").iloc[-1]
+    high, low = float(candle["high"]), float(candle["low"])
+    if low > zone.upper or high < zone.lower:
+        return False
+    open_price, close = float(candle["open"]), float(candle["close"])
+    full_range = max(high - low, 1e-12)
+    body_ratio = abs(close - open_price) / full_range
+    midpoint = (zone.lower + zone.upper) / 2.0
+    if body_ratio < config.FVG_REJECTION_MIN_BODY_RATIO:
+        return False
+    if zone.direction == "buy":
+        return close > open_price and close >= midpoint
+    return close < open_price and close <= midpoint
+
+
+def evaluate_fvg(df_h1: pd.DataFrame, df_m15: pd.DataFrame, df_m1: pd.DataFrame) -> TradeSignal:
+    """Strategi B: zona FVG H1/M15 dan trigger rejection pada M1."""
+    h1_zones = detect_fvg_zones(df_h1, "H1", config.FVG_MAX_AGE_H1_BARS)
+    m15_zones = detect_fvg_zones(df_m15, "M15", config.FVG_MAX_AGE_M15_BARS)
+    overlaps = [zone for h1 in h1_zones for m15 in m15_zones if (zone := _overlap_zone(h1, m15))]
+    candidates = overlaps + sorted(h1_zones + m15_zones, key=lambda zone: (zone.age_bars, zone.timeframe))
+    triggered = [zone for zone in candidates if _m1_rejection(df_m1, zone)]
+    directions = {zone.direction for zone in triggered}
+    if len(directions) > 1:
+        return TradeSignal("none", "Strategi B konflik: FVG buy dan sell sama-sama terpicu", strategy_source="NONE")
+    if not triggered:
+        return TradeSignal("none", "Strategi B netral: belum ada rejection M1 pada FVG aktif", strategy_source="NONE")
+    zone = triggered[0]
+    atr_series = add_all_indicators(
+        df_m1, config.EMA_ENTRY_FAST, config.EMA_ENTRY_SLOW,
+        config.RSI_PERIOD, config.ATR_PERIOD,
+    )["atr"].dropna()
+    atr = float(atr_series.iloc[-1]) if not atr_series.empty else None
+    close = float(df_m1.sort_values("time").iloc[-1]["close"])
+    return TradeSignal(
+        zone.direction,
+        f"FVG {zone.timeframe} {zone.direction} [{zone.lower:.4f}-{zone.upper:.4f}] + rejection M1",
+        atr_value=atr,
+        entry_price=close,
+        strategy_source="B_ONLY",
+        strategy_b_signal=zone.direction,
+        fvg_timeframe=zone.timeframe,
+        fvg_lower=zone.lower,
+        fvg_upper=zone.upper,
+    )
+
+
+def combine_signals(signal_a: TradeSignal, signal_b: TradeSignal) -> TradeSignal:
+    """Gabungkan A/B: netral mengizinkan solo, konflik membatalkan entry."""
+    a, b = signal_a.signal, signal_b.signal
+    if a != "none" and b != "none" and a != b:
+        return TradeSignal(
+            "none", f"Konflik strategi: A={a}, B={b}; entry dibatalkan",
+            strategy_source="CONFLICT", strategy_a_signal=a, strategy_b_signal=b,
+        )
+    if a != "none" and b == "none":
+        signal_a.strategy_source = "A_ONLY"
+        signal_a.strategy_a_signal = a
+        signal_a.strategy_b_signal = "none"
+        signal_a.reason = f"A_ONLY: {signal_a.reason}; B netral"
+        return signal_a
+    if b != "none" and a == "none":
+        signal_b.strategy_source = "B_ONLY"
+        signal_b.strategy_a_signal = "none"
+        signal_b.strategy_b_signal = b
+        signal_b.reason = f"B_ONLY: A netral; {signal_b.reason}"
+        return signal_b
+    if a != "none" and a == b:
+        return TradeSignal(
+            a,
+            f"A_PLUS_B: {signal_a.reason}; {signal_b.reason}",
+            atr_value=signal_a.atr_value or signal_b.atr_value,
+            entry_price=signal_b.entry_price or signal_a.entry_price,
+            strategy_source="A_PLUS_B",
+            strategy_a_signal=a,
+            strategy_b_signal=b,
+            fvg_timeframe=signal_b.fvg_timeframe,
+            fvg_lower=signal_b.fvg_lower,
+            fvg_upper=signal_b.fvg_upper,
+        )
+    return TradeSignal("none", "Strategi A dan B netral", strategy_source="NONE")
+
+
+def risk_multiplier_for(strategy_source: str) -> float:
+    """Confluence tidak menggandakan risiko; sinyal solo diperkecil."""
+    if strategy_source in {"A_ONLY", "B_ONLY"}:
+        return config.STRATEGY_SOLO_RISK_MULTIPLIER
+    return 1.0
+
+
+def evaluate_hybrid(
+    df_a_trend: pd.DataFrame,
+    df_a_entry: pd.DataFrame,
+    df_h1: pd.DataFrame,
+    df_m15: pd.DataFrame,
+    df_m1: pd.DataFrame,
+) -> TradeSignal:
+    signal_a = evaluate(df_a_trend, df_a_entry) if config.STRATEGY_A_ENABLED else TradeSignal("none", "A nonaktif")
+    signal_b = evaluate_fvg(df_h1, df_m15, df_m1) if config.STRATEGY_B_ENABLED else TradeSignal("none", "B nonaktif")
+    return combine_signals(signal_a, signal_b)
 
 
 def get_trend_bias(df_h1: pd.DataFrame) -> tuple[Bias, str]:

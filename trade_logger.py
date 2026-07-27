@@ -21,6 +21,8 @@ TRADE_FIELDS = [
     "close_to_ema_fast", "ema_gap_ratio", "price_vs_ema_fast", "rsi_diff_m15",
     "h1_ema_slope", "m15_ema_slope", "atr_ratio", "entry_hour", "weekday",
     "ai_expected_r", "learner_expected_r",
+    "strategy_source", "strategy_a_signal", "strategy_b_signal",
+    "fvg_timeframe", "fvg_lower", "fvg_upper",
 ]
 
 SYSTEM_FIELDS = ["timestamp", "event", "detail"]
@@ -304,7 +306,10 @@ def log_trade(order_id: str, position_ticket: str | int, signal: str, lot_size: 
               reason: str, signal_price: float = 0.0, requested_price: float = 0.0,
               spread_points: float = 0.0, slippage_points: float = 0.0,
               feature_values: dict | None = None, ai_expected_r: float | None = None,
-              learner_expected_r: float = 0.0) -> None:
+              learner_expected_r: float = 0.0, strategy_source: str = "A_ONLY",
+              strategy_a_signal: str = "", strategy_b_signal: str = "",
+              fvg_timeframe: str = "", fvg_lower: float | None = None,
+              fvg_upper: float | None = None) -> None:
     """Mencatat satu trade yang baru dieksekusi."""
     _ensure_file(config.TRADE_LOG_FILE, TRADE_FIELDS)
     feature_values = feature_values or {}
@@ -331,6 +336,12 @@ def log_trade(order_id: str, position_ticket: str | int, signal: str, lot_size: 
         "ai_score": round(ai_score, 4),
         "ai_expected_r": round(ai_expected_r, 4) if ai_expected_r is not None else "",
         "learner_expected_r": round(learner_expected_r, 4),
+        "strategy_source": strategy_source,
+        "strategy_a_signal": strategy_a_signal,
+        "strategy_b_signal": strategy_b_signal,
+        "fvg_timeframe": fvg_timeframe,
+        "fvg_lower": round(fvg_lower, 8) if fvg_lower is not None else "",
+        "fvg_upper": round(fvg_upper, 8) if fvg_upper is not None else "",
         "combined_score": round(combined_score, 4),
         "reason": reason,
         "signal_price": signal_price,

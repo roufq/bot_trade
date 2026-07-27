@@ -54,6 +54,19 @@ def _data_file(name: str) -> str:
 SYMBOL = os.getenv("TRADING_SYMBOL", "XAUUSD.vx")
 TF_TREND = "M1"      # Tren diambil dari M1 untuk hyper scalping
 TF_ENTRY = "M1"      # Entry eksekusi juga di M1
+FVG_TF_CONTEXT = "H1"
+FVG_TF_ZONE = "M15"
+FVG_TF_TRIGGER = "M1"
+
+# Dua mesin sinyal dapat bekerja sendiri atau membentuk confluence. Sinyal
+# tunggal tetap boleh entry, tetapi memakai risiko lebih kecil.
+STRATEGY_A_ENABLED = _env_bool("TRADING_STRATEGY_A_ENABLED", True)
+STRATEGY_B_ENABLED = _env_bool("TRADING_STRATEGY_B_ENABLED", True)
+STRATEGY_SOLO_RISK_MULTIPLIER = _env_float("TRADING_STRATEGY_SOLO_RISK_MULTIPLIER", 0.50)
+FVG_MIN_GAP_ATR = _env_float("TRADING_FVG_MIN_GAP_ATR", 0.10)
+FVG_MAX_AGE_H1_BARS = _env_int("TRADING_FVG_MAX_AGE_H1_BARS", 24)
+FVG_MAX_AGE_M15_BARS = _env_int("TRADING_FVG_MAX_AGE_M15_BARS", 48)
+FVG_REJECTION_MIN_BODY_RATIO = _env_float("TRADING_FVG_REJECTION_MIN_BODY_RATIO", 0.50)
 
 # =========================================================
 # PARAMETER INDIKATOR

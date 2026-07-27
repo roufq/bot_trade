@@ -211,7 +211,7 @@ Telegram bersifat opsional. Bot tetap dapat berjalan tanpa Telegram.
 
 ## Alternatif paling mudah: installer desktop
 
-Jika menerima file `AITradingDesktop-Setup-1.2.4.exe`, pengguna tidak perlu
+Jika menerima file `AITradingDesktop-Setup-1.3.0.exe`, pengguna tidak perlu
 memasang Python, Git, virtual environment, atau dependency pada langkah 1--6.
 Pengguna tetap wajib memasang MetaTrader 5.
 

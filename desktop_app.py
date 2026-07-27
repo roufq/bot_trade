@@ -16,7 +16,7 @@ from tkinter import filedialog, messagebox, ttk
 
 
 APP_TITLE = "AI Trading Desktop"
-APP_VERSION = "1.2.4"
+APP_VERSION = "1.3.0"
 COLORS = {
     "bg": "#0B1220", "surface": "#111B2E", "surface_alt": "#17233A",
     "border": "#24324A", "text": "#E8EEF8", "muted": "#91A0B8",
@@ -74,6 +74,13 @@ SETTING_FIELDS = [
     ("Take Profit × ATR", "TRADING_TP_ATR_MULTIPLIER", "1.8", False),
     ("Jarak minimum entry (ATR)", "TRADING_MIN_ENTRY_DISTANCE_ATR", "0.5", False),
     ("Jarak maksimum momentum (ATR)", "TRADING_MOMENTUM_MAX_DISTANCE_ATR", "0.55", False),
+    ("Strategi A EMA/RSI/ATR aktif", "TRADING_STRATEGY_A_ENABLED", "true", False),
+    ("Strategi B FVG aktif", "TRADING_STRATEGY_B_ENABLED", "true", False),
+    ("Pengali risiko sinyal tunggal", "TRADING_STRATEGY_SOLO_RISK_MULTIPLIER", "0.50", False),
+    ("Lebar minimum FVG (ATR)", "TRADING_FVG_MIN_GAP_ATR", "0.10", False),
+    ("Umur maksimum FVG H1 (bar)", "TRADING_FVG_MAX_AGE_H1_BARS", "24", False),
+    ("Umur maksimum FVG M15 (bar)", "TRADING_FVG_MAX_AGE_M15_BARS", "48", False),
+    ("Body minimum rejection FVG", "TRADING_FVG_REJECTION_MIN_BODY_RATIO", "0.50", False),
     ("Tambahan threshold mode probe", "TRADING_PROBE_ENTRY_THRESHOLD_BONUS", "0.02", False),
     ("Tambahan threshold spread tinggi", "TRADING_HIGH_SPREAD_THRESHOLD_BONUS", "0.01", False),
     ("Tambahan threshold spread sangat tinggi", "TRADING_VERY_HIGH_SPREAD_THRESHOLD_BONUS", "0.03", False),
@@ -106,7 +113,10 @@ SETTING_FIELDS = [
     ("URL kalender berita", "TRADING_NEWS_CALENDAR_URL", "", True),
 ]
 
-BOOLEAN_SETTINGS = {"TRADING_BREAK_EVEN_ENABLED", "TRADING_TRAILING_STOP_ENABLED"}
+BOOLEAN_SETTINGS = {
+    "TRADING_BREAK_EVEN_ENABLED", "TRADING_TRAILING_STOP_ENABLED",
+    "TRADING_STRATEGY_A_ENABLED", "TRADING_STRATEGY_B_ENABLED",
+}
 
 TRADING_PRESETS = {
     "Konservatif": {
@@ -158,6 +168,9 @@ def validate_settings(values: dict[str, str]) -> list[str]:
         "TRADING_TP_ATR_MULTIPLIER": (0.2, 20.0),
         "TRADING_MIN_ENTRY_DISTANCE_ATR": (0.0, 5.0),
         "TRADING_MOMENTUM_MAX_DISTANCE_ATR": (0.1, 1.5),
+        "TRADING_STRATEGY_SOLO_RISK_MULTIPLIER": (0.1, 1.0),
+        "TRADING_FVG_MIN_GAP_ATR": (0.01, 2.0),
+        "TRADING_FVG_REJECTION_MIN_BODY_RATIO": (0.0, 1.0),
         "TRADING_PROBE_ENTRY_THRESHOLD_BONUS": (0.0, 0.30),
         "TRADING_HIGH_SPREAD_THRESHOLD_BONUS": (0.0, 0.30),
         "TRADING_VERY_HIGH_SPREAD_THRESHOLD_BONUS": (0.0, 0.30),
@@ -181,6 +194,8 @@ def validate_settings(values: dict[str, str]) -> list[str]:
         "TRADING_EMA_ENTRY_FAST": (2, 100),
         "TRADING_EMA_ENTRY_SLOW": (3, 200),
         "TRADING_RSI_PERIOD": (2, 100),
+        "TRADING_FVG_MAX_AGE_H1_BARS": (1, 500),
+        "TRADING_FVG_MAX_AGE_M15_BARS": (1, 1000),
         "TRADING_HOUR_START": (0, 23),
         "TRADING_HOUR_END": (1, 24),
     }

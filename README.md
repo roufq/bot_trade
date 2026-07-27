@@ -47,6 +47,21 @@ Filter spread memiliki tiga tingkat. Spread sampai 20% ATR diproses normal;
 25--35% ATR menaikkan threshold 0,10 dan menurunkan target risiko 35%.
 Spread di atas 35% ATR atau 50 points tetap ditolak.
 
+## Strategi hybrid A + B
+
+Engine memakai dua sumber sinyal yang tetap dapat diaudit secara terpisah:
+
+- **A**: EMA, RSI, ATR, crossover, continuation, dan momentum yang sudah ada.
+- **B**: FVG dari candle tertutup H1/M15 dengan rejection pada candle tertutup M1.
+
+Jika hanya A atau hanya B yang valid dan strategi lain netral, entry tetap boleh
+dilakukan dengan pengali risiko solo (default 0,50). Jika A dan B searah, sumber
+sinyal menjadi `A_PLUS_B` dengan risiko normal--bukan risiko ganda. Jika arah A
+dan B berlawanan, entry dibatalkan. Setiap entry mencatat `strategy_source`,
+sinyal A/B, timeframe FVG, dan batas zona agar performa `A_ONLY`, `B_ONLY`, dan
+`A_PLUS_B` dapat dibandingkan. FVG yang telah terisi penuh atau melewati umur
+maksimum tidak digunakan kembali.
+
 Setiap setup valid juga dicatat secara virtual ke `shadow_signal_log.csv`, baik
 yang diterima maupun ditolak AI. Hasil SL/TP virtual ini memungkinkan evaluasi
 apakah filter AI benar-benar menambah nilai tanpa mempertaruhkan uang pada
@@ -73,26 +88,26 @@ menjalankan aplikasi desktop. Panduan source dan build EXE tersedia di
 [DESKTOP_SETUP.md](DESKTOP_SETUP.md).
 
 Paket untuk komputer tanpa Python dibuat sebagai
-`installer_output/AITradingDesktop-Setup-1.2.4.exe`. MetaTrader 5 tetap wajib
+`installer_output/AITradingDesktop-Setup-1.3.0.exe`. MetaTrader 5 tetap wajib
 terpasang dan login.
 
 ## Konfigurasi
 
 Aplikasi desktop menyediakan profil **Konservatif**, **Seimbang**, dan **Aktif**
 sebagai titik awal. Setiap pengguna dapat mengubah sendiri risiko, jumlah posisi,
-spread/ATR, periode EMA/RSI/ATR, SL dan TP berbasis ATR, jarak entry, rentang
+  spread/ATR, strategi A/B, parameter FVG, periode EMA/RSI/ATR, SL dan TP berbasis ATR, jarak entry, rentang
 volatilitas, break-even, trailing stop, serta jam trading. Semua nilai divalidasi
 sebelum disimpan. Preset maupun konfigurasi manual tidak menjamin profit; proteksi
 risiko internal tetap aktif.
 
-Versi 1.2.4 memakai satu **Folder data terpadu** untuk engine source dan
+Versi 1.3.0 memakai satu **Folder data terpadu** untuk engine source dan
 desktop. Tombol **Import CSV Pengalaman** menggabungkan entry, closed trade, dan
 shadow signal berdasarkan ticket tanpa menggandakan pengalaman. Tombol
 **Export CSV Pengalaman** membuat salinan portabel tanpa password MT5, token
 Telegram, atau konfigurasi rahasia. Backup dibuat sebelum import memperbarui
 file tujuan.
 
-Versi 1.2.4 juga menyediakan pengaturan jarak momentum dan tambahan threshold
+Versi 1.3.0 juga menyediakan pengaturan jarak momentum dan tambahan threshold
 probe/spread. Default mode aktif lebih longgar: threshold dasar 0,45 menjadi
 sekitar 0,48 ketika probe dan spread tinggi aktif, sementara target risiko tetap
 diperkecil selama performa rolling melemah.

@@ -102,13 +102,13 @@ Python tidak diperlukan pada komputer tujuan jika memakai EXE hasil build.
 Untuk pengguna awam, distribusikan installer berikut, bukan folder source:
 
 ```text
-installer_output\AITradingDesktop-Setup-1.2.4.exe
+installer_output\AITradingDesktop-Setup-1.3.0.exe
 ```
 
 Langkah pengguna:
 
 1. Tutup versi aplikasi yang lama jika sedang berjalan.
-2. Jalankan `AITradingDesktop-Setup-1.2.4.exe`.
+2. Jalankan `AITradingDesktop-Setup-1.3.0.exe`.
 3. Ikuti wizard dan pilih shortcut Desktop bila diinginkan.
 4. Buka **AI Trading Desktop** dari Start Menu atau Desktop.
 5. Isi tab **Konfigurasi**.
@@ -167,7 +167,8 @@ folder data tetap dipertahankan.
 Tab Konfigurasi menyediakan:
 
 - Profil awal Konservatif, Seimbang, dan Aktif.
-- Pengaturan manual EMA, RSI, ATR, SL/TP, jarak entry, volatilitas, jam trading,
+- Pengaturan manual strategi A/B, FVG H1/M15 dengan trigger M1, EMA, RSI, ATR,
+  SL/TP, jarak entry, volatilitas, jam trading,
   break-even, dan trailing stop.
 - Validasi hubungan antarnilai sebelum konfigurasi dapat disimpan.
 

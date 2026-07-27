@@ -63,7 +63,15 @@ def fetch_backtest_data():
 
     df_h1 = mt5_connector.get_rates(config.SYMBOL, config.TF_TREND, count=count_trend)
     df_m15 = mt5_connector.get_rates(config.SYMBOL, config.TF_ENTRY, count=count_entry)
-    return df_h1, df_m15
+    fvg_h1_count = min(BACKTEST_MONTHS * 30 * 24, MAX_BARS_PER_REQUEST)
+    fvg_m15_count = min(BACKTEST_MONTHS * 30 * 24 * 4, MAX_BARS_PER_REQUEST)
+    df_fvg_h1 = mt5_connector.get_rates(config.SYMBOL, config.FVG_TF_CONTEXT, count=fvg_h1_count)
+    df_fvg_m15 = mt5_connector.get_rates(config.SYMBOL, config.FVG_TF_ZONE, count=fvg_m15_count)
+    df_m1 = (
+        df_m15 if config.TF_ENTRY == config.FVG_TF_TRIGGER
+        else mt5_connector.get_rates(config.SYMBOL, config.FVG_TF_TRIGGER, count=count_entry)
+    )
+    return df_h1, df_m15, df_fvg_h1, df_fvg_m15, df_m1
 
 
 def prepare_h1_bias(df_h1: pd.DataFrame) -> pd.DataFrame:
@@ -121,8 +129,8 @@ def run_backtest():
         return
 
     print(f"Mengambil data historis {config.SYMBOL} (target {BACKTEST_MONTHS} bulan)...")
-    df_h1, df_m15 = fetch_backtest_data()
-    if df_h1 is None or df_m15 is None or len(df_h1) == 0 or len(df_m15) == 0:
+    df_h1, df_m15, df_fvg_h1, df_fvg_m15, df_m1 = fetch_backtest_data()
+    if any(frame is None or len(frame) == 0 for frame in (df_h1, df_m15, df_fvg_h1, df_fvg_m15, df_m1)):
         print("Gagal mengambil data historis.")
         mt5_connector.disconnect()
         return
@@ -136,6 +144,9 @@ def run_backtest():
 
     df_h1 = df_h1.sort_values("time").reset_index(drop=True)
     df_m15 = df_m15.sort_values("time").reset_index(drop=True)
+    df_fvg_h1 = df_fvg_h1.sort_values("time").reset_index(drop=True)
+    df_fvg_m15 = df_fvg_m15.sort_values("time").reset_index(drop=True)
+    df_m1 = df_m1.sort_values("time").reset_index(drop=True)
     equity = INITIAL_EQUITY
     equity_start_of_day = equity
     current_day = None
@@ -147,8 +158,8 @@ def run_backtest():
 
     # Candle indeks i adalah candle eksekusi. Sinyal hanya melihat candle < i,
     # sama seperti live yang memakai closed_only=True.
-    for i in range(warmup, len(df_m15)):
-        row = df_m15.iloc[i]
+    for i in range(warmup, len(df_m1)):
+        row = df_m1.iloc[i]
         bar_day = row.time.date()
         if bar_day != current_day:
             current_day = bar_day
@@ -188,6 +199,7 @@ def run_backtest():
                     "result": "TP" if hit_tp and not hit_sl else "SL",
                     "profit": net_profit,
                     "equity_after": equity,
+                    "strategy_source": position.get("strategy_source", "UNKNOWN"),
                 })
             else:
                 remaining.append(position)
@@ -207,11 +219,16 @@ def run_backtest():
 
         if len(positions) >= config.MAX_OPEN_POSITIONS:
             continue
-        entry_history = df_m15.iloc[:i].tail(100)
+        entry_history = df_m15[df_m15["time"] < row.time].tail(100)
         trend_history = df_h1[df_h1["time"] < row.time].tail(300)
-        if len(entry_history) < warmup or len(trend_history) < warmup:
+        fvg_h1_history = df_fvg_h1[df_fvg_h1["time"] < row.time].tail(300)
+        fvg_m15_history = df_fvg_m15[df_fvg_m15["time"] < row.time].tail(300)
+        m1_history = df_m1.iloc[:i].tail(100)
+        if len(entry_history) < warmup or len(trend_history) < warmup or len(m1_history) < warmup:
             continue
-        signal_result = strategy.evaluate(trend_history, entry_history)
+        signal_result = strategy.evaluate_hybrid(
+            trend_history, entry_history, fvg_h1_history, fvg_m15_history, m1_history,
+        )
         if signal_result.signal == "none" or not signal_result.atr_value:
             continue
         signal = signal_result.signal
@@ -221,6 +238,8 @@ def run_backtest():
             * symbol_info["volume_min"]
         ) if spread_cost > 0 else 0.0
         entry_price = float(row.open) + spread_price if signal == "buy" else float(row.open)
+        risk_percent = config.RISK_PERCENT_PER_TRADE
+        risk_percent *= strategy.risk_multiplier_for(signal_result.strategy_source)
         order_plan = risk_manager.build_order_plan(
             signal=signal,
             entry_price=entry_price,
@@ -232,7 +251,7 @@ def run_backtest():
             volume_min=symbol_info["volume_min"],
             volume_max=symbol_info["volume_max"],
             volume_step=symbol_info["volume_step"],
-            risk_percent=config.RISK_PERCENT_PER_TRADE,
+            risk_percent=risk_percent,
         )
         if order_plan is None:
             continue
@@ -244,6 +263,7 @@ def run_backtest():
             "tp": order_plan.tp_price,
             "lot": order_plan.lot_size,
             "entry_time": row.time,
+            "strategy_source": signal_result.strategy_source,
         })
 
     mt5_connector.disconnect()
@@ -291,6 +311,20 @@ def print_summary(trades_df: pd.DataFrame, equity_df: pd.DataFrame) -> None:
     print(f"Equity awal -> akhir    : ${INITIAL_EQUITY:.2f} -> ${final_equity:.2f}")
     print(f"Max drawdown            : {max_drawdown:.2f}%")
     print(f"Rata-rata trade/bulan   : {total_trades / BACKTEST_MONTHS:.1f}")
+    if "strategy_source" in trades_df.columns:
+        print("\nPerforma per sumber strategi:")
+        for source, group in trades_df.groupby("strategy_source"):
+            source_wins = group[group["profit"] > 0]
+            source_losses = group[group["profit"] <= 0]
+            source_gross_loss = abs(source_losses["profit"].sum())
+            source_pf = (
+                source_wins["profit"].sum() / source_gross_loss
+                if source_gross_loss > 0 else float("inf")
+            )
+            print(
+                f"  {source}: {len(group)} trade, win rate={len(source_wins) / len(group):.1%}, "
+                f"PF={source_pf:.2f}, net=${group['profit'].sum():+.2f}"
+            )
     print()
     print("Detail lengkap disimpan di: backtest_trades.csv, backtest_equity_curve.csv")
     print()

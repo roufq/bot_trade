@@ -144,10 +144,15 @@ def _load_enriched_history() -> pd.DataFrame:
         entries["order_key"] = entries["order_id"].fillna("").astype(str).str.replace(r"\.0$", "", regex=True)
         closed = closed.copy()
         closed["order_key"] = closed["order_id"].fillna("").astype(str).str.replace(r"\.0$", "", regex=True)
-        columns = [column for column in ["order_key", "reason", "signal"] if column in entries]
+        columns = [
+            column for column in ["order_key", "reason", "signal", "strategy_source"]
+            if column in entries
+        ]
         enriched = closed.merge(entries[columns].drop_duplicates("order_key", keep="last"), on="order_key", how="left", suffixes=("", "_entry"))
         enriched["entry_reason"] = enriched.get("reason_entry", enriched.get("reason", ""))
         enriched["entry_signal"] = enriched.get("signal_entry", enriched.get("signal", ""))
+        if "strategy_source" in enriched:
+            enriched["entry_strategy_source"] = enriched["strategy_source"].fillna("")
         return enriched
     except (OSError, ValueError, KeyError, pd.errors.ParserError):
         return closed

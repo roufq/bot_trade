@@ -37,14 +37,5 @@
   "35": "test_mt5_connector.py",
   "36": "AGENTS.md",
   "37": "build_desktop.ps1",
-  "38": "convert_trade_log_schema.py",
-  "39": "14. Data yang disimpan",
-  "40": "RuntimeGuardTests",
-  "41": "TradeLoggerRepairTests",
-  "42": "4. Tiga cara bot melakukan entry",
-  "43": "5. Indikator yang digunakan",
-  "44": "9. Arti tiga preset",
-  "45": "SingleInstanceLock",
-  "46": "load_closed_trades",
-  "47": "6. Bagaimana AI belajar"
+  "38": "convert_trade_log_schema.py"
 }

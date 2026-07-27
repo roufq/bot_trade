@@ -162,7 +162,13 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
     # 4. Ambil data & cek sinyal
     df_h1 = mt5_connector.get_rates(config.SYMBOL, config.TF_TREND, count=300)
     df_m15 = mt5_connector.get_rates(config.SYMBOL, config.TF_ENTRY, count=100)
-    if df_h1 is None or df_m15 is None:
+    df_fvg_h1 = mt5_connector.get_rates(config.SYMBOL, config.FVG_TF_CONTEXT, count=300)
+    df_fvg_m15 = mt5_connector.get_rates(config.SYMBOL, config.FVG_TF_ZONE, count=300)
+    df_m1 = (
+        df_m15 if config.TF_ENTRY == config.FVG_TF_TRIGGER
+        else mt5_connector.get_rates(config.SYMBOL, config.FVG_TF_TRIGGER, count=100)
+    )
+    if any(frame is None for frame in (df_h1, df_m15, df_fvg_h1, df_fvg_m15, df_m1)):
         trade_logger.log_system_event("error", "Gagal mengambil data candle")
         return current_tickets
     shadow_tracker.resolve(df_m15)
@@ -243,7 +249,7 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
         return current_tickets
     _last_evaluated_entry_bar = entry_bar_time
 
-    signal_result = strategy.evaluate(df_h1, df_m15)
+    signal_result = strategy.evaluate_hybrid(df_h1, df_m15, df_fvg_h1, df_fvg_m15, df_m1)
     print_status(f"Sinyal: {signal_result.signal} - {signal_result.reason}")
 
     if signal_result.signal == "none":
@@ -338,6 +344,12 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
         else:
             learning_decision.risk_percent *= config.AI_RISK_MULTIPLIER_LOW_CONFIDENCE
             learning_decision.reason += "; model confidence rendah"
+    if signal_result.strategy_source in {"A_ONLY", "B_ONLY"}:
+        learning_decision.risk_percent *= strategy.risk_multiplier_for(signal_result.strategy_source)
+        learning_decision.reason += (
+            f"; {signal_result.strategy_source} memakai pengali risiko "
+            f"{strategy.risk_multiplier_for(signal_result.strategy_source):.2f}"
+        )
     learning_decision.risk_percent = max(
         config.RISK_PERCENT_PER_TRADE * config.LEARNING_MIN_RISK_MULTIPLIER,
         min(learning_decision.risk_percent, config.RISK_PERCENT_PER_TRADE * config.LEARNING_MAX_RISK_MULTIPLIER),
@@ -513,6 +525,12 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
             spread_points=spread_points,
             slippage_points=slippage_points,
             feature_values=features,
+            strategy_source=signal_result.strategy_source,
+            strategy_a_signal=signal_result.strategy_a_signal,
+            strategy_b_signal=signal_result.strategy_b_signal,
+            fvg_timeframe=signal_result.fvg_timeframe,
+            fvg_lower=signal_result.fvg_lower,
+            fvg_upper=signal_result.fvg_upper,
         )
         if position_ticket:
             try:
