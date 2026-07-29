@@ -5,6 +5,7 @@ Menangani ekstraksi fitur entry, inferensi model, dan penyimpanan model.
 """
 
 import os
+import json
 from dataclasses import dataclass
 from typing import Optional
 
@@ -38,13 +39,34 @@ FEATURE_COLUMNS = [
     "sl_distance",
     "tp_distance",
     "spread_points",
+    "market_structure_score",
+    "liquidity_score",
+    "snr_score",
+    "order_block_score",
+    "supply_demand_score",
+    "displacement_score",
+    "premium_discount_score",
+    "candlestick_score",
+    "volume_score",
+    "session_score",
+    "signal_side",
 ]
+
+TECHNIQUE_FEATURES = {
+    "C": "market_structure_score", "D": "liquidity_score", "E": "snr_score",
+    "F": "order_block_score", "G": "supply_demand_score", "H": "displacement_score",
+    "I": "premium_discount_score", "J": "candlestick_score", "K": "volume_score",
+    "L": "session_score",
+}
 
 
 @dataclass(frozen=True)
 class ModelPrediction:
     win_probability: float
     expected_r: float | None = None
+
+
+_last_model_load_error = ""
 
 
 def extract_features(
@@ -106,22 +128,47 @@ def extract_features(
         "h1_ema_slope": h1_ema_slope,
         "m15_ema_slope": m15_ema_slope,
         "atr_ratio": atr_ratio,
+        "signal_side": 1.0 if signal_result.signal == "buy" else -1.0,
         "entry_hour": int(entry_hour),
         "weekday": int(weekday),
         "sl_distance": float(signal_result.atr_value * config.SL_ATR_MULTIPLIER) if signal_result.atr_value else 0.0,
         "tp_distance": float(signal_result.atr_value * config.TP_ATR_MULTIPLIER) if signal_result.atr_value else 0.0,
         "spread_points": float(spread_points),
     }
+    technique_scores = signal_result.technique_scores or {}
+    features.update({feature: float(technique_scores.get(code, 0.0)) for code, feature in TECHNIQUE_FEATURES.items()})
     return features
 
 
 def _load_model():
+    global _last_model_load_error
     if not os.path.exists(config.MODEL_FILE):
+        _last_model_load_error = "model belum tersedia; belum ada kandidat yang dipromosikan"
         return None
     try:
-        return joblib.load(config.MODEL_FILE)
-    except Exception:
+        model = joblib.load(config.MODEL_FILE)
+        _last_model_load_error = ""
+        return model
+    except Exception as exc:
+        _last_model_load_error = f"file model gagal dimuat ({type(exc).__name__}: {exc})"
         return None
+
+
+def model_status() -> tuple[bool, str]:
+    """Status diagnostik model terakhir tanpa menyembunyikan alasan kegagalan."""
+    if not os.path.exists(config.MODEL_FILE):
+        rejected_path = os.path.join(config.AI_MODEL_REGISTRY_DIR, "last_rejected.json")
+        if os.path.exists(rejected_path):
+            try:
+                with open(rejected_path, "r", encoding="utf-8") as handle:
+                    rejected = json.load(handle)
+                return False, f"kandidat terakhir ditolak: {rejected.get('reason', 'tidak lolos validasi')}"
+            except (OSError, ValueError):
+                pass
+        return False, "model belum tersedia; belum ada kandidat yang lolos validasi/promosi"
+    if _last_model_load_error:
+        return False, _last_model_load_error
+    return True, "model tersedia"
 
 
 def predict(
@@ -135,9 +182,17 @@ def predict(
         return None
 
     features = extract_features(df_h1, df_m15, signal_result, spread_points=spread_points)
-    x = pd.DataFrame([features])[FEATURE_COLUMNS]
     classifier = bundle.get("classifier") if isinstance(bundle, dict) else bundle
     regressor = bundle.get("regressor") if isinstance(bundle, dict) else None
+    if isinstance(bundle, dict) and bundle.get("features"):
+        model_features = list(bundle["features"])
+    elif hasattr(classifier, "feature_names_in_"):
+        model_features = list(classifier.feature_names_in_)
+    elif getattr(classifier, "n_features_in_", len(FEATURE_COLUMNS)) < len(FEATURE_COLUMNS):
+        model_features = FEATURE_COLUMNS[:int(classifier.n_features_in_)]
+    else:
+        model_features = FEATURE_COLUMNS
+    x = pd.DataFrame([features]).reindex(columns=model_features, fill_value=0.0)
     proba = float(classifier.predict_proba(x)[0][1])
     expected_r = float(regressor.predict(x)[0]) if regressor is not None else None
     return ModelPrediction(proba, expected_r)
@@ -218,11 +273,21 @@ def _prepare_dataframe_from_trade_log(df_trade: pd.DataFrame, df_closed: pd.Data
         merged["price_vs_ema_fast"] = pd.to_numeric(
             merged["price_vs_ema_fast"], errors="coerce"
         ).fillna(merged["close_to_ema_fast"])
-    for optional in ["rsi_diff_m15", "h1_ema_slope", "m15_ema_slope", "atr_ratio", "spread_points"]:
+    for optional in [
+        "rsi_diff_m15", "h1_ema_slope", "m15_ema_slope", "atr_ratio", "spread_points",
+        *TECHNIQUE_FEATURES.values(),
+    ]:
         if optional not in merged.columns:
             merged[optional] = 0.0
         else:
             merged[optional] = merged[optional].fillna(0.0)
+    direction_column = "signal_entry" if "signal_entry" in merged else "signal" if "signal" in merged else None
+    if "signal_side" not in merged:
+        merged["signal_side"] = 0.0
+    merged["signal_side"] = pd.to_numeric(merged["signal_side"], errors="coerce")
+    if direction_column:
+        derived_side = merged[direction_column].astype(str).str.lower().map({"buy": 1.0, "sell": -1.0})
+        merged["signal_side"] = merged["signal_side"].fillna(derived_side).fillna(0.0)
     merged["target"] = (merged["profit"] > 0).astype(int)
     risk_column = "risk_amount_entry" if "risk_amount_entry" in merged.columns else "risk_amount"
     if risk_column not in merged.columns:
@@ -233,7 +298,91 @@ def _prepare_dataframe_from_trade_log(df_trade: pd.DataFrame, df_closed: pd.Data
         merged["r_multiple"] = merged["r_multiple"].clip(-3.0, 5.0)
     for column in FEATURE_COLUMNS + ["target", "r_multiple"]:
         merged[column] = pd.to_numeric(merged[column], errors="coerce")
+    merged["sample_source"] = "real"
     return merged.dropna(subset=FEATURE_COLUMNS + ["target", "r_multiple"])
+
+
+def _prepare_shadow_dataframe(df_shadow: pd.DataFrame) -> pd.DataFrame:
+    """Gunakan hanya shadow reject resolved dengan snapshot fitur lengkap."""
+    if df_shadow is None or df_shadow.empty or "features_json" not in df_shadow:
+        return pd.DataFrame()
+    work = df_shadow[
+        (df_shadow.get("status") == "resolved")
+        & (df_shadow.get("decision") == "ai_reject")
+    ].copy()
+    rows = []
+    for item in work.to_dict("records"):
+        try:
+            features = json.loads(item.get("features_json") or "{}")
+            if not all(name in features for name in FEATURE_COLUMNS):
+                continue
+            result_r = float(item["result_r"])
+        except (TypeError, ValueError, json.JSONDecodeError):
+            continue
+        rows.append({
+            **{name: features[name] for name in FEATURE_COLUMNS},
+            "timestamp_entry": item.get("signal_time"),
+            "target": int(result_r > 0), "r_multiple": result_r,
+            "strategy_source": item.get("strategy_source", ""),
+            "signal": item.get("signal", ""), "sample_source": "shadow",
+        })
+    result = pd.DataFrame(rows)
+    if result.empty:
+        return result
+    for column in FEATURE_COLUMNS + ["target", "r_multiple"]:
+        result[column] = pd.to_numeric(result[column], errors="coerce")
+    return result.dropna(subset=FEATURE_COLUMNS + ["target", "r_multiple", "timestamp_entry"])
+
+
+def _prepare_historical_dataframe(df_historical: pd.DataFrame) -> pd.DataFrame:
+    if df_historical is None or df_historical.empty:
+        return pd.DataFrame()
+    required = {"signal_time", "result_r", *(set(FEATURE_COLUMNS) - {"signal_side"})}
+    if not required.issubset(df_historical.columns):
+        return pd.DataFrame()
+    result = df_historical.copy()
+    result["timestamp_entry"] = result["signal_time"]
+    result["r_multiple"] = pd.to_numeric(result["result_r"], errors="coerce")
+    result["target"] = (result["r_multiple"] > 0).astype(int)
+    result["sample_source"] = "historical"
+    if "signal_side" not in result:
+        direction = result["signal"] if "signal" in result else pd.Series("", index=result.index)
+        result["signal_side"] = direction.astype(str).str.lower().map({"buy": 1.0, "sell": -1.0})
+    for column in FEATURE_COLUMNS:
+        result[column] = pd.to_numeric(result[column], errors="coerce")
+    return result.dropna(subset=FEATURE_COLUMNS + ["target", "r_multiple", "timestamp_entry"])
+
+
+def load_training_samples() -> pd.DataFrame:
+    frames = []
+    if os.path.exists(config.TRADE_LOG_FILE) and os.path.exists(config.CLOSED_TRADE_LOG_FILE):
+        frames.append(_prepare_dataframe_from_trade_log(
+            pd.read_csv(config.TRADE_LOG_FILE), pd.read_csv(config.CLOSED_TRADE_LOG_FILE),
+        ))
+    real_count = len(frames[0]) if frames else 0
+    if os.path.exists(config.SHADOW_SIGNAL_LOG_FILE):
+        shadow = _prepare_shadow_dataframe(pd.read_csv(config.SHADOW_SIGNAL_LOG_FILE))
+        if real_count and len(shadow) > real_count * config.AI_MAX_SHADOW_TO_REAL_RATIO:
+            shadow = shadow.sort_values("timestamp_entry").tail(int(real_count * config.AI_MAX_SHADOW_TO_REAL_RATIO))
+        frames.append(shadow)
+    if os.path.exists(config.HISTORICAL_SIGNAL_DATASET_FILE):
+        frames.append(_prepare_historical_dataframe(pd.read_csv(config.HISTORICAL_SIGNAL_DATASET_FILE)))
+    frames = [frame for frame in frames if frame is not None and not frame.empty]
+    if not frames:
+        return pd.DataFrame()
+    combined = pd.concat(frames, ignore_index=True, sort=False)
+    combined["timestamp_entry"] = pd.to_datetime(
+        combined["timestamp_entry"], errors="coerce", format="mixed",
+    )
+    combined = combined.dropna(subset=["timestamp_entry"]).sort_values("timestamp_entry")
+    combined["_minute"] = combined["timestamp_entry"].dt.floor("min")
+    combined["_priority"] = combined["sample_source"].map({"real": 0, "shadow": 1, "historical": 2}).fillna(3)
+    signal_col = combined["signal"] if "signal" in combined else pd.Series("", index=combined.index)
+    combined["_signal"] = signal_col.fillna("").astype(str)
+    combined = combined.sort_values(["_minute", "_priority"]).drop_duplicates(
+        subset=["_minute", "_signal"], keep="first",
+    )
+    return combined.drop(columns=["_minute", "_priority", "_signal"])
 
 
 def _create_model() -> RandomForestClassifier:
@@ -246,21 +395,15 @@ def _create_model() -> RandomForestClassifier:
 
 
 def train_model() -> None:
-    if not os.path.exists(config.TRADE_LOG_FILE) or not os.path.exists(config.CLOSED_TRADE_LOG_FILE):
-        print("Tidak ada data training. Pastikan trade_log.csv dan closed_trade_log.csv tersedia.")
+    merged = load_training_samples()
+    if len(merged) < config.AI_MIN_TRAINING_SAMPLES:
+        print(
+            f"Data terlalu sedikit untuk training ({len(merged)}/{config.AI_MIN_TRAINING_SAMPLES} sampel). "
+            "Bangun dataset historis atau kumpulkan shadow resolved lebih banyak."
+        )
         return
-
-    df_trade = pd.read_csv(config.TRADE_LOG_FILE)
-    df_closed = pd.read_csv(config.CLOSED_TRADE_LOG_FILE)
-    from learner import validate_closed_trade_history
-    history_valid, reason = validate_closed_trade_history(df_closed)
-    if not history_valid:
-        print(f"Training dibatalkan: kualitas closed-trade tidak valid ({reason}).")
-        return
-    merged = _prepare_dataframe_from_trade_log(df_trade, df_closed)
-    if len(merged) < 50:
-        print(f"Data terlalu sedikit untuk training ({len(merged)} baris). Kumpulkan lebih banyak trade dulu.")
-        return
+    source_counts = merged["sample_source"].value_counts().to_dict()
+    print(f"Dataset training: {len(merged)} sampel {source_counts}")
 
     X = merged[FEATURE_COLUMNS]
     y = merged["target"]
@@ -288,6 +431,12 @@ def train_model() -> None:
     test = merged.iloc[split_index:]
     X_train, y_train = train[FEATURE_COLUMNS], train["target"]
     X_test, y_test = test[FEATURE_COLUMNS], test["target"]
+    if len(test) < config.AI_MIN_TEST_SAMPLES:
+        print(
+            f"Training dibatalkan: test out-of-sample hanya {len(test)} "
+            f"dari minimum {config.AI_MIN_TEST_SAMPLES} sampel."
+        )
+        return
     if y_train.nunique() < 2 or y_test.nunique() < 2:
         print("Training dibatalkan: train/test berbasis waktu harus sama-sama memiliki win dan loss.")
         return
@@ -356,7 +505,7 @@ def train_model() -> None:
     print(f"Brier score: {brier_score_loss(y_test, y_proba):.4f} (lebih kecil lebih baik)")
     print(f"Expected-R MAE: {r_mae:.4f}R")
     print(f"Actual R sinyal terpilih: {selected_actual_r:+.4f}R ({int(selected.sum())} trade)")
-    print(classification_report(y_test, y_pred))
+    print(classification_report(y_test, y_pred, zero_division=0))
 
     calibration_report = pd.DataFrame({"actual": y_test.to_numpy(), "probability": y_proba})
     calibration_report["probability_bin"] = pd.cut(
@@ -380,7 +529,7 @@ def train_model() -> None:
         "selected_actual_r": selected_actual_r,
         "selected_rows": int(selected.sum()),
     }
-    bundle = {"version": 2, "classifier": model_to_save, "regressor": regressor, "features": FEATURE_COLUMNS}
+    bundle = {"version": 3, "classifier": model_to_save, "regressor": regressor, "features": FEATURE_COLUMNS}
     promoted, detail = model_registry.promote(bundle, metrics)
     if promoted:
         print(f"Model dipromosikan sebagai versi {detail} ke {config.MODEL_FILE}")

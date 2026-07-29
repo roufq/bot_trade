@@ -16,7 +16,7 @@ from tkinter import filedialog, messagebox, ttk
 
 
 APP_TITLE = "AI Trading Desktop"
-APP_VERSION = "1.3.0"
+APP_VERSION = "1.4.3"
 COLORS = {
     "bg": "#0B1220", "surface": "#111B2E", "surface_alt": "#17233A",
     "border": "#24324A", "text": "#E8EEF8", "muted": "#91A0B8",
@@ -72,10 +72,40 @@ SETTING_FIELDS = [
     ("Periode ATR", "TRADING_ATR_PERIOD", "14", False),
     ("Stop Loss × ATR", "TRADING_SL_ATR_MULTIPLIER", "1.2", False),
     ("Take Profit × ATR", "TRADING_TP_ATR_MULTIPLIER", "1.8", False),
+    ("Blokir sinyal A_ONLY SELL", "TRADING_BLOCK_A_ONLY_SELL", "true", False),
+    ("Structural stop aktif", "TRADING_STRUCTURAL_STOP_ENABLED", "true", False),
+    ("Lookback structural stop (bar)", "TRADING_STRUCTURAL_STOP_LOOKBACK_BARS", "30", False),
+    ("Buffer structural stop (ATR)", "TRADING_STRUCTURAL_STOP_BUFFER_ATR", "0.15", False),
+    ("Buffer structural stop (spread)", "TRADING_STRUCTURAL_STOP_SPREAD_MULTIPLIER", "1.50", False),
+    ("Jarak maksimum structural stop (ATR)", "TRADING_STRUCTURAL_STOP_MAX_ATR", "1.80", False),
+    ("Minimum reward/risk structural", "TRADING_STRUCTURAL_STOP_MIN_REWARD_RISK", "1.30", False),
+    ("Horizon audit pasca-SL (bar)", "TRADING_STOP_REVIEW_HORIZON_BARS", "30", False),
     ("Jarak minimum entry (ATR)", "TRADING_MIN_ENTRY_DISTANCE_ATR", "0.5", False),
     ("Jarak maksimum momentum (ATR)", "TRADING_MOMENTUM_MAX_DISTANCE_ATR", "0.55", False),
     ("Strategi A EMA/RSI/ATR aktif", "TRADING_STRATEGY_A_ENABLED", "true", False),
     ("Strategi B FVG aktif", "TRADING_STRATEGY_B_ENABLED", "true", False),
+    ("Modul teknikal C-L aktif", "TRADING_TECHNICAL_MODULES_ENABLED", "true", False),
+    ("Strategi C Market Structure", "TRADING_STRATEGY_C_ENABLED", "true", False),
+    ("Strategi D Liquidity", "TRADING_STRATEGY_D_ENABLED", "true", False),
+    ("Strategi E SNR", "TRADING_STRATEGY_E_ENABLED", "true", False),
+    ("Strategi F Order Block", "TRADING_STRATEGY_F_ENABLED", "true", False),
+    ("Strategi G Supply/Demand", "TRADING_STRATEGY_G_ENABLED", "true", False),
+    ("Strategi H Displacement", "TRADING_STRATEGY_H_ENABLED", "true", False),
+    ("Strategi I Premium/Discount", "TRADING_STRATEGY_I_ENABLED", "true", False),
+    ("Strategi J Candlestick", "TRADING_STRATEGY_J_ENABLED", "true", False),
+    ("Strategi K Volume", "TRADING_STRATEGY_K_ENABLED", "true", False),
+    ("Strategi L Session", "TRADING_STRATEGY_L_ENABLED", "true", False),
+    ("Minimum konfirmasi teknikal", "TRADING_TECHNICAL_MIN_CONFIRMATIONS", "2", False),
+    ("Minimum skor confluence", "TRADING_TECHNICAL_MIN_CONFLUENCE_SCORE", "1.30", False),
+    ("Minimum skor sinyal modul", "TRADING_TECHNICAL_MIN_SIGNAL_SCORE", "0.45", False),
+    ("Skor veto konflik", "TRADING_TECHNICAL_CONFLICT_VETO_SCORE", "1.30", False),
+    ("Minimum sampel training AI", "TRADING_AI_MIN_TRAINING_SAMPLES", "200", False),
+    ("Minimum sampel test AI", "TRADING_AI_MIN_TEST_SAMPLES", "40", False),
+    ("Maksimum candle replay M1", "TRADING_AI_REPLAY_MAX_M1_BARS", "20000", False),
+    ("Horizon outcome replay", "TRADING_AI_REPLAY_OUTCOME_HORIZON_BARS", "240", False),
+    ("Jarak minimum sinyal replay", "TRADING_AI_REPLAY_MIN_SIGNAL_SPACING_BARS", "3", False),
+    ("Interval scan replay M1", "TRADING_AI_REPLAY_SCAN_STEP_BARS", "30", False),
+    ("Rasio shadow terhadap real", "TRADING_AI_MAX_SHADOW_TO_REAL_RATIO", "2.0", False),
     ("Pengali risiko sinyal tunggal", "TRADING_STRATEGY_SOLO_RISK_MULTIPLIER", "0.50", False),
     ("Lebar minimum FVG (ATR)", "TRADING_FVG_MIN_GAP_ATR", "0.10", False),
     ("Umur maksimum FVG H1 (bar)", "TRADING_FVG_MAX_AGE_H1_BARS", "24", False),
@@ -107,6 +137,14 @@ SETTING_FIELDS = [
     ("Password MT5", "TRADING_MT5_PASSWORD", "", True),
     ("Server MT5", "TRADING_MT5_SERVER", "", False),
     ("Path terminal64.exe", "TRADING_MT5_PATH", "", False),
+    ("Magic number bot", "TRADING_MT5_MAGIC", "234000", False),
+    ("Izinkan hedge berlawanan", "TRADING_ALLOW_OPPOSITE_HEDGE", "false", False),
+    ("Controlled reversal aktif", "TRADING_CONTROLLED_REVERSAL_ENABLED", "true", False),
+    ("Minimum konfirmasi reversal", "TRADING_REVERSAL_MIN_CONFLUENCE", "2", False),
+    ("Minimum skor reversal", "TRADING_REVERSAL_MIN_ENTRY_SCORE", "0.65", False),
+    ("Keunggulan skor reversal", "TRADING_REVERSAL_SCORE_EDGE", "0.10", False),
+    ("Umur minimum posisi reversal (detik)", "TRADING_REVERSAL_MIN_POSITION_AGE_SECONDS", "60", False),
+    ("Batas adverse reversal (R)", "TRADING_REVERSAL_MAX_ADVERSE_R", "0.75", False),
     ("Token Telegram", "TRADING_TELEGRAM_BOT_TOKEN", "", True),
     ("Chat ID Telegram", "TRADING_TELEGRAM_CHAT_ID", "", False),
     ("Blackout berita", "TRADING_NEWS_BLACKOUT_WINDOWS", "", False),
@@ -116,6 +154,15 @@ SETTING_FIELDS = [
 BOOLEAN_SETTINGS = {
     "TRADING_BREAK_EVEN_ENABLED", "TRADING_TRAILING_STOP_ENABLED",
     "TRADING_STRATEGY_A_ENABLED", "TRADING_STRATEGY_B_ENABLED",
+    "TRADING_TECHNICAL_MODULES_ENABLED", "TRADING_STRATEGY_C_ENABLED",
+    "TRADING_STRATEGY_D_ENABLED", "TRADING_STRATEGY_E_ENABLED",
+    "TRADING_STRATEGY_F_ENABLED", "TRADING_STRATEGY_G_ENABLED",
+    "TRADING_STRATEGY_H_ENABLED", "TRADING_STRATEGY_I_ENABLED",
+    "TRADING_STRATEGY_J_ENABLED", "TRADING_STRATEGY_K_ENABLED",
+    "TRADING_STRATEGY_L_ENABLED",
+    "TRADING_ALLOW_OPPOSITE_HEDGE",
+    "TRADING_CONTROLLED_REVERSAL_ENABLED",
+    "TRADING_BLOCK_A_ONLY_SELL", "TRADING_STRUCTURAL_STOP_ENABLED",
 }
 
 TRADING_PRESETS = {
@@ -169,6 +216,10 @@ def validate_settings(values: dict[str, str]) -> list[str]:
         "TRADING_MIN_ENTRY_DISTANCE_ATR": (0.0, 5.0),
         "TRADING_MOMENTUM_MAX_DISTANCE_ATR": (0.1, 1.5),
         "TRADING_STRATEGY_SOLO_RISK_MULTIPLIER": (0.1, 1.0),
+        "TRADING_TECHNICAL_MIN_CONFLUENCE_SCORE": (0.5, 10.0),
+        "TRADING_TECHNICAL_MIN_SIGNAL_SCORE": (0.1, 1.0),
+        "TRADING_TECHNICAL_CONFLICT_VETO_SCORE": (0.5, 10.0),
+        "TRADING_AI_MAX_SHADOW_TO_REAL_RATIO": (0.0, 10.0),
         "TRADING_FVG_MIN_GAP_ATR": (0.01, 2.0),
         "TRADING_FVG_REJECTION_MIN_BODY_RATIO": (0.0, 1.0),
         "TRADING_PROBE_ENTRY_THRESHOLD_BONUS": (0.0, 0.30),
@@ -184,11 +235,22 @@ def validate_settings(values: dict[str, str]) -> list[str]:
         "TRADING_BREAK_EVEN_OFFSET_POINTS": (0.0, 100.0),
         "TRADING_TRAILING_TRIGGER_ATR": (0.1, 10.0),
         "TRADING_TRAILING_DISTANCE_ATR": (0.1, 10.0),
+        "TRADING_STRUCTURAL_STOP_BUFFER_ATR": (0.0, 2.0),
+        "TRADING_STRUCTURAL_STOP_SPREAD_MULTIPLIER": (0.0, 10.0),
+        "TRADING_STRUCTURAL_STOP_MAX_ATR": (0.5, 5.0),
+        "TRADING_STRUCTURAL_STOP_MIN_REWARD_RISK": (0.5, 5.0),
+        "TRADING_REVERSAL_MIN_ENTRY_SCORE": (0.0, 1.0),
+        "TRADING_REVERSAL_SCORE_EDGE": (0.0, 1.0),
+        "TRADING_REVERSAL_MAX_ADVERSE_R": (0.0, 2.0),
     }
     integer_numeric = {
         "TRADING_MAX_OPEN_POSITIONS": (1, 10),
         "TRADING_MAX_POSITIONS_PER_DIRECTION": (1, 10),
         "TRADING_ATR_PERIOD": (5, 100),
+        "TRADING_STRUCTURAL_STOP_LOOKBACK_BARS": (7, 500),
+        "TRADING_STOP_REVIEW_HORIZON_BARS": (5, 500),
+        "TRADING_REVERSAL_MIN_CONFLUENCE": (2, 10),
+        "TRADING_REVERSAL_MIN_POSITION_AGE_SECONDS": (0, 3600),
         "TRADING_EMA_TREND_FAST": (2, 300),
         "TRADING_EMA_TREND_SLOW": (3, 500),
         "TRADING_EMA_ENTRY_FAST": (2, 100),
@@ -196,8 +258,16 @@ def validate_settings(values: dict[str, str]) -> list[str]:
         "TRADING_RSI_PERIOD": (2, 100),
         "TRADING_FVG_MAX_AGE_H1_BARS": (1, 500),
         "TRADING_FVG_MAX_AGE_M15_BARS": (1, 1000),
+        "TRADING_TECHNICAL_MIN_CONFIRMATIONS": (2, 10),
+        "TRADING_AI_MIN_TRAINING_SAMPLES": (100, 10000),
+        "TRADING_AI_MIN_TEST_SAMPLES": (20, 2000),
+        "TRADING_AI_REPLAY_MAX_M1_BARS": (1000, 100000),
+        "TRADING_AI_REPLAY_OUTCOME_HORIZON_BARS": (30, 5000),
+        "TRADING_AI_REPLAY_MIN_SIGNAL_SPACING_BARS": (1, 100),
+        "TRADING_AI_REPLAY_SCAN_STEP_BARS": (1, 60),
         "TRADING_HOUR_START": (0, 23),
         "TRADING_HOUR_END": (1, 24),
+        "TRADING_MT5_MAGIC": (1, 2147483647),
     }
     if not current("TRADING_SYMBOL").strip():
         errors.append("Symbol broker wajib diisi.")
@@ -292,6 +362,7 @@ def process_command(mode: str) -> list[str]:
         "engine": "main.py",
         "quality": "data_quality.py",
         "training": "retrain_model.py",
+        "replay": "historical_learning.py",
         "report": "performance_report.py",
         "tests": None,
     }
@@ -324,6 +395,10 @@ def dispatch_cli() -> bool:
         import retrain_model
 
         retrain_model.main()
+    elif mode == "replay":
+        import historical_learning
+
+        print(historical_learning.generate())
     elif mode == "report":
         import performance_report
 
@@ -515,6 +590,7 @@ class TradingDesktop(tk.Tk):
         ai = ttk.LabelFrame(self.dashboard, text="Data & AI Tools", padding=14)
         ai.pack(fill="x", pady=14)
         ttk.Button(ai, text="Audit Data", command=lambda: self.run_tool("quality")).pack(side="left", padx=(0, 8))
+        ttk.Button(ai, text="Bangun Dataset", command=lambda: self.run_tool("replay")).pack(side="left", padx=(0, 8))
         ttk.Button(ai, text="Training AI", command=lambda: self.run_tool("training"), style="Primary.TButton").pack(
             side="left", padx=(0, 8)
         )

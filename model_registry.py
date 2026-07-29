@@ -10,19 +10,32 @@ import joblib
 import config
 
 
+def _reject(reason: str, metrics: dict) -> tuple[bool, str]:
+    os.makedirs(config.AI_MODEL_REGISTRY_DIR, exist_ok=True)
+    payload = {
+        "status": "rejected", "reason": reason,
+        "created_at": datetime.now().isoformat(), "metrics": metrics,
+    }
+    temporary = os.path.join(config.AI_MODEL_REGISTRY_DIR, "last_rejected.json.tmp")
+    with open(temporary, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, indent=2)
+    os.replace(temporary, os.path.join(config.AI_MODEL_REGISTRY_DIR, "last_rejected.json"))
+    return False, reason
+
+
 def promote(model, metrics: dict) -> tuple[bool, str]:
     auc = float(metrics.get("auc", 0.0))
     brier = float(metrics.get("brier", 1.0))
     if auc < config.AI_MODEL_MIN_AUC:
-        return False, f"AUC {auc:.3f} di bawah {config.AI_MODEL_MIN_AUC:.3f}"
+        return _reject(f"AUC {auc:.3f} di bawah {config.AI_MODEL_MIN_AUC:.3f}", metrics)
     if brier > config.AI_MODEL_MAX_BRIER:
-        return False, f"Brier {brier:.3f} di atas {config.AI_MODEL_MAX_BRIER:.3f}"
+        return _reject(f"Brier {brier:.3f} di atas {config.AI_MODEL_MAX_BRIER:.3f}", metrics)
     r_mae = float(metrics.get("r_mae", float("inf")))
     selected_actual_r = float(metrics.get("selected_actual_r", float("-inf")))
     if r_mae > config.AI_MODEL_MAX_R_MAE:
-        return False, f"Expected-R MAE {r_mae:.3f} di atas {config.AI_MODEL_MAX_R_MAE:.3f}"
+        return _reject(f"Expected-R MAE {r_mae:.3f} di atas {config.AI_MODEL_MAX_R_MAE:.3f}", metrics)
     if selected_actual_r < config.AI_MODEL_MIN_SELECTED_ACTUAL_R:
-        return False, f"Actual R terpilih {selected_actual_r:+.3f} belum positif"
+        return _reject(f"Actual R terpilih {selected_actual_r:+.3f} belum positif", metrics)
 
     os.makedirs(config.AI_MODEL_REGISTRY_DIR, exist_ok=True)
     version = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -36,6 +49,9 @@ def promote(model, metrics: dict) -> tuple[bool, str]:
     os.replace(temporary, config.MODEL_FILE)
     with open(os.path.join(config.AI_MODEL_REGISTRY_DIR, "active.json"), "w", encoding="utf-8") as handle:
         json.dump({"version": version, "model_path": model_path, "metrics": metrics}, handle, indent=2)
+    rejected_path = os.path.join(config.AI_MODEL_REGISTRY_DIR, "last_rejected.json")
+    if os.path.exists(rejected_path):
+        os.remove(rejected_path)
     return True, version
 
 

@@ -93,7 +93,8 @@ def disconnect() -> None:
     mt5.shutdown()
 
 
-def get_rates(symbol: str, timeframe: str, count: int = 300, closed_only: bool = True) -> Optional[pd.DataFrame]:
+def get_rates(symbol: str, timeframe: str, count: int = 300, closed_only: bool = True,
+              include_spread: bool = False) -> Optional[pd.DataFrame]:
     """
     Mengambil data candle historis dari MT5.
 
@@ -121,7 +122,10 @@ def get_rates(symbol: str, timeframe: str, count: int = 300, closed_only: bool =
     df = pd.DataFrame(rates)
     df["time"] = pd.to_datetime(df["time"], unit="s")
     df = df.rename(columns={"tick_volume": "volume"})
-    return df[["time", "open", "high", "low", "close", "volume"]]
+    columns = ["time", "open", "high", "low", "close", "volume"]
+    if include_spread and "spread" in df.columns:
+        columns.append("spread")
+    return df[columns]
 
 
 def get_account_info() -> Optional[dict]:
@@ -368,7 +372,7 @@ def send_market_order(symbol: str, order_type: str, lot_size: float,
             "sl": sl_price,
             "tp": tp_price,
             "deviation": config.MAX_ORDER_DEVIATION_POINTS,
-            "magic": 234000,
+            "magic": config.MT5_MAGIC,
             "comment": comment,
             "type_time": mt5.ORDER_TIME_GTC,
             "type_filling": type_filling,
@@ -407,4 +411,62 @@ def send_market_order(symbol: str, order_type: str, lot_size: float,
             # Bukan soal filling mode -- tidak ada gunanya coba mode lain
             break
 
+    return {"success": False, "error": last_error}
+
+
+def close_position(position, comment: str = "controlled-reversal") -> dict:
+    """Tutup satu posisi tertentu; aman untuk akun hedging karena ticket disertakan."""
+    _require_mt5()
+    symbol = str(position.symbol)
+    tick = mt5.symbol_info_tick(symbol)
+    sym_info = mt5.symbol_info(symbol)
+    if tick is None or sym_info is None:
+        return {"success": False, "error": "Gagal mengambil tick/symbol_info saat menutup posisi"}
+
+    is_buy = int(position.type) == mt5.POSITION_TYPE_BUY
+    close_type = mt5.ORDER_TYPE_SELL if is_buy else mt5.ORDER_TYPE_BUY
+    price = tick.bid if is_buy else tick.ask
+    candidates = []
+    if int(sym_info.filling_mode) & 1:
+        candidates.append(mt5.ORDER_FILLING_FOK)
+    if int(sym_info.filling_mode) & 2:
+        candidates.append(mt5.ORDER_FILLING_IOC)
+    candidates.append(mt5.ORDER_FILLING_RETURN)
+
+    last_error = None
+    for type_filling in dict.fromkeys(candidates):
+        request = {
+            "action": mt5.TRADE_ACTION_DEAL,
+            "position": int(position.ticket),
+            "symbol": symbol,
+            "volume": float(position.volume),
+            "type": close_type,
+            "price": price,
+            "deviation": config.MAX_ORDER_DEVIATION_POINTS,
+            "magic": config.MT5_MAGIC,
+            "comment": comment,
+            "type_time": mt5.ORDER_TIME_GTC,
+            "type_filling": type_filling,
+        }
+        check = mt5.order_check(request)
+        if check is None or int(getattr(check, "retcode", -1)) != 0:
+            last_error = (
+                f"order_check gagal: {mt5.last_error()}" if check is None
+                else f"order_check retcode={check.retcode}, comment={getattr(check, 'comment', '')}"
+            )
+            continue
+        result = mt5.order_send(request)
+        if result is not None and result.retcode == mt5.TRADE_RETCODE_DONE:
+            return {
+                "success": True,
+                "order_id": getattr(result, "order", None),
+                "deal_id": getattr(result, "deal", None),
+                "price": getattr(result, "price", price),
+            }
+        last_error = (
+            f"order_send gagal: {mt5.last_error()}" if result is None
+            else f"retcode={result.retcode}, comment={result.comment}"
+        )
+        if result is not None and result.retcode != 10030:
+            break
     return {"success": False, "error": last_error}

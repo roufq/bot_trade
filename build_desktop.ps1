@@ -30,6 +30,8 @@ if (-not (Test-Path ".venv\Scripts\python.exe")) {
     --hidden-import pandas `
     --hidden-import joblib `
     --hidden-import history_store `
+    --hidden-import technical_strategies `
+    --hidden-import historical_learning `
     desktop_app.py
 
 Copy-Item -LiteralPath "$PSScriptRoot\dist\AITradingDesktop.exe" `
@@ -46,7 +48,7 @@ $isccCandidates = @(
 $iscc = $isccCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
 if ($iscc) {
     & $iscc "$PSScriptRoot\installer.iss"
-    Write-Host "Installer selesai: $PSScriptRoot\installer_output\AITradingDesktop-Setup-1.3.0.exe"
+    Write-Host "Installer selesai: $PSScriptRoot\installer_output\AITradingDesktop-Setup-1.4.3.exe"
 }
 else {
     Write-Warning "Inno Setup belum tersedia; EXE portable selesai tetapi Setup.exe belum dibuat."

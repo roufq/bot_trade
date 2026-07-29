@@ -3,7 +3,7 @@
 Dokumen ini dibuat agar orang yang belum pernah mengenal trading, pemrograman,
 atau kecerdasan buatan tetap dapat memahami dan memakai aplikasi.
 
-Versi aplikasi yang dijelaskan: **AI Trading Desktop 1.3.0**.
+Versi aplikasi yang dijelaskan: **AI Trading Desktop 1.4.3**.
 
 > Penting: bot tidak dapat menjamin keuntungan dan tidak dapat menghilangkan
 > kerugian. Gunakan akun latihan atau akun demo terlebih dahulu. Jangan memakai
@@ -335,7 +335,7 @@ sehingga tidak ada order.
 Bagian ini menjelaskan seluruh pengaturan yang terlihat pada tab Konfigurasi.
 Nilai default adalah nilai awal aplikasi. Setelah mengubah pengaturan, klik
 **Simpan Konfigurasi**, lalu Stop dan Start bot agar perubahan digunakan.
-Versi 1.3.0 mempunyai 50 pengaturan.
+Versi 1.3.1 mempunyai 50 pengaturan.
 
 ### 8.0 Folder data terpadu
 
@@ -911,7 +911,7 @@ API key juga merupakan rahasia dan tidak boleh dimasukkan ke GitHub.
 1. pasang MetaTrader 5;
 2. login ke akun demo;
 3. aktifkan Algo Trading;
-4. pasang `AITradingDesktop-Setup-1.3.0.exe`;
+4. pasang `AITradingDesktop-Setup-1.4.3.exe`;
 5. buka tab Konfigurasi;
 6. pilih preset Seimbang sebagai awal;
 7. isi simbol broker dan data MT5 jika diperlukan;

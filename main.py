@@ -33,6 +33,8 @@ import performance_guard
 import model_monitor
 import news_filter
 import shadow_tracker
+import reversal_manager
+import stop_review
 
 _last_evaluated_entry_bar = None
 _last_console_status = None
@@ -72,6 +74,12 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
         return previous_position_tickets
 
     equity_now = account["equity"]
+    state_reset, state_reason = runtime_guard.ensure_account_state(account)
+    if state_reset:
+        equity_start_of_day = equity_now
+        previous_position_tickets = set()
+        print_status(f"State risiko akun diinisialisasi: {state_reason}.")
+        trade_logger.log_system_event("risk_state_initialized", state_reason)
     _, weekly_dd, peak_dd = runtime_guard.update_equity_state(equity_now)
     risk_limit_reason = ""
     if weekly_dd >= config.MAX_WEEKLY_DRAWDOWN_PERCENT:
@@ -90,7 +98,11 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
 
     # 2b. Deteksi posisi yang baru tertutup sejak siklus sebelumnya
     open_positions = mt5_connector.get_open_positions(config.SYMBOL)
-    current_tickets = {p.ticket for p in open_positions}
+    bot_positions = [
+        position for position in open_positions
+        if int(getattr(position, "magic", 0) or 0) == config.MT5_MAGIC
+    ]
+    current_tickets = {p.ticket for p in bot_positions}
     closed_tickets = previous_position_tickets - current_tickets
 
     for ticket in closed_tickets:
@@ -149,6 +161,13 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
             commission=deal.get("commission", 0),
             reason=close_reason,
         )
+        if close_reason == "closed_position_sl":
+            stop_review.record(
+                ticket, signal_label, exit_time,
+                float(entry_info.get("entry_price", 0.0) or 0.0),
+                float(entry_info.get("sl_price", 0.0) or 0.0),
+                float(entry_info.get("tp_price", 0.0) or 0.0),
+            )
         notifier.notify_trade_closed(
             signal=signal_label,
             lot_size=deal["volume"],
@@ -172,6 +191,9 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
         trade_logger.log_system_event("error", "Gagal mengambil data candle")
         return current_tickets
     shadow_tracker.resolve(df_m15)
+    reviewed_stops = stop_review.resolve(df_m1)
+    if reviewed_stops:
+        trade_logger.log_system_event("stop_review_resolved", f"{reviewed_stops} SL selesai diaudit")
 
     symbol_info = mt5_connector.get_symbol_info(config.SYMBOL)
     prices = mt5_connector.get_current_prices(config.SYMBOL)
@@ -185,7 +207,7 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
         from indicators import calculate_atr
         atr_series = calculate_atr(df_m15, config.ATR_PERIOD).dropna()
         atr_now = float(atr_series.iloc[-1]) if not atr_series.empty else 0.0
-    for event in position_manager.manage(open_positions, atr_now, ask_price, bid_price, symbol_info):
+    for event in position_manager.manage(bot_positions, atr_now, ask_price, bid_price, symbol_info):
         trade_logger.log_system_event("position_management", event)
 
     # Batas risiko mencegah entry baru, tetapi engine harus tetap berjalan agar
@@ -239,10 +261,6 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
     high_spread_mode = spread_atr_ratio > config.SOFT_SPREAD_ATR_RATIO
     very_high_spread_mode = spread_atr_ratio > config.VERY_HIGH_SPREAD_ATR_RATIO
 
-    if not risk_manager.can_open_new_position(len(open_positions)):
-        print_status(f"Slot posisi penuh ({len(open_positions)}/{config.MAX_OPEN_POSITIONS}).")
-        return current_tickets
-
     global _last_evaluated_entry_bar
     entry_bar_time = str(df_m15.iloc[-1]["time"])
     if entry_bar_time == _last_evaluated_entry_bar:
@@ -253,6 +271,15 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
     print_status(f"Sinyal: {signal_result.signal} - {signal_result.reason}")
 
     if signal_result.signal == "none":
+        return current_tickets
+    if (
+        config.BLOCK_A_ONLY_SELL
+        and signal_result.signal == "sell"
+        and signal_result.strategy_source == "A_ONLY"
+    ):
+        reason = "A_ONLY SELL diblokir karena expectancy historis arah SELL melemah"
+        print_status(f"Entry ditolak: {reason}")
+        trade_logger.log_system_event("entry_direction_filter", reason)
         return current_tickets
 
     model_healthy, model_health_reason, _ = model_monitor.evaluate()
@@ -270,8 +297,9 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
         expected_text = f", expected={model_expected_r:+.2f}R" if model_expected_r is not None else ""
         print(f"[{datetime.now()}] AI model probability trade-profit: {model_score:.2f}{expected_text}")
     else:
-        print(f"[{datetime.now()}] AI model belum tersedia atau tidak dapat memprediksi.")
-        trade_logger.log_system_event("ai_model", "Model ML belum tersedia atau gagal dimuat")
+        _, model_reason = ai_trader.model_status()
+        print(f"[{datetime.now()}] AI model nonaktif: {model_reason}; learner adaptif tetap aktif.")
+        trade_logger.log_system_event("ai_model", model_reason)
         if config.AI_FORCE_MODEL_ONLY:
             print(f"[{datetime.now()}] AI_FORCE_MODEL_ONLY aktif, lewati entry karena model tidak tersedia.")
             return current_tickets
@@ -312,11 +340,16 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
         and (model_expected_r is None or model_expected_r >= config.AI_MIN_EXPECTED_R_FOR_TRADE)
         and combined_score >= entry_threshold
     )
+    signal_features = ai_trader.extract_features(
+        df_h1, df_m15, signal_result, spread_points=spread_points,
+    )
     shadow_tracker.record(
         entry_bar_time, signal_result.signal, learner.infer_setup(signal_result.reason),
         float(signal_result.entry_price or (ask_price if signal_result.signal == "buy" else bid_price)),
         float(signal_result.atr_value or 0.0), model_score, model_expected_r,
         learning_decision.average_r, "ai_accept" if ai_accepts else "ai_reject",
+        strategy_source=signal_result.strategy_source,
+        feature_values=signal_features,
     )
 
     if model_score is not None and model_score < config.AI_MIN_MODEL_CONFIDENCE_FOR_TRADE:
@@ -344,7 +377,7 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
         else:
             learning_decision.risk_percent *= config.AI_RISK_MULTIPLIER_LOW_CONFIDENCE
             learning_decision.reason += "; model confidence rendah"
-    if signal_result.strategy_source in {"A_ONLY", "B_ONLY"}:
+    if "_PLUS_" not in signal_result.strategy_source:
         learning_decision.risk_percent *= strategy.risk_multiplier_for(signal_result.strategy_source)
         learning_decision.reason += (
             f"; {signal_result.strategy_source} memakai pengali risiko "
@@ -380,13 +413,49 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
 
     # 5. Hitung risiko & kirim order
     real_entry_price = ask_price if signal_result.signal == "buy" else bid_price
+    reversal_positions = []
 
     direction_ok, direction_reason = risk_manager.can_open_direction(
         open_positions, signal_result.signal, real_entry_price, signal_result.atr_value
     )
     if not direction_ok:
-        print_status(f"Entry ditolak exposure: {direction_reason}")
-        return current_tickets
+        desired_type = 0 if signal_result.signal == "buy" else 1
+        bot_opposite = [pos for pos in bot_positions if int(pos.type) != desired_type]
+        foreign_opposite = [
+            pos for pos in open_positions
+            if int(pos.type) != desired_type
+            and int(getattr(pos, "magic", 0) or 0) != config.MT5_MAGIC
+        ]
+        entry_scores = {}
+        for position in bot_opposite:
+            entry_info = trade_logger.get_entry_trade_info(position_ticket=position.ticket)
+            try:
+                entry_scores[int(position.ticket)] = float(entry_info["combined_score"])
+            except (KeyError, TypeError, ValueError):
+                pass
+        reversal = reversal_manager.decide(
+            signal_result=signal_result,
+            combined_score=combined_score,
+            opposite_positions=bot_opposite,
+            foreign_opposite_positions=foreign_opposite,
+            entry_scores=entry_scores,
+            current_price=real_entry_price,
+        )
+        trade_logger.log_system_event(
+            f"reversal_{reversal.action}",
+            f"signal={signal_result.signal}, source={signal_result.strategy_source}; {reversal.reason}",
+        )
+        if reversal.action != "close_and_reverse":
+            print_status(f"Entry ditolak exposure: {direction_reason}; reversal hold: {reversal.reason}")
+            return current_tickets
+
+        print_status(f"Controlled reversal disetujui: {reversal.reason}")
+        reversal_positions = bot_opposite
+        reversal_tickets = {int(pos.ticket) for pos in reversal_positions}
+        # Hitung slot dan exposure seolah posisi lama sudah ditutup. Eksekusi
+        # penutupan baru dilakukan setelah order baru lolos seluruh preflight.
+        open_positions = [pos for pos in open_positions if int(pos.ticket) not in reversal_tickets]
+        bot_positions = [pos for pos in bot_positions if int(pos.ticket) not in reversal_tickets]
 
     if not risk_manager.can_open_new_position(len(open_positions)):
         print(f"[{datetime.now()}] Slot posisi penuh ({len(open_positions)}/{config.MAX_OPEN_POSITIONS}), lewati.")
@@ -403,6 +472,22 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
               f"(+{learning_decision.risk_percent:.2f}% baru akan melebihi batas {config.MAX_TOTAL_OPEN_RISK_PERCENT}%), lewati.")
         return current_tickets
 
+    structural_sl = None
+    structural_reason = ""
+    if config.STRUCTURAL_STOP_ENABLED:
+        structural_sl, structural_reason = risk_manager.structural_stop_price(
+            df_m1,
+            signal_result.signal,
+            real_entry_price,
+            signal_result.atr_value,
+            max(0.0, ask_price - bid_price),
+            symbol_info["trade_tick_size"],
+        )
+        if structural_sl is None:
+            print_status(f"Entry ditolak structural SL: {structural_reason}")
+            trade_logger.log_system_event("structural_stop_reject", structural_reason)
+            return current_tickets
+
     order_plan = risk_manager.build_order_plan(
         signal=signal_result.signal,
         entry_price=real_entry_price,
@@ -416,6 +501,7 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
         volume_step=symbol_info["volume_step"],
         risk_percent=learning_decision.risk_percent,
         market_score=learning_decision.trend_strength,
+        structural_sl_price=structural_sl,
     )
 
     if order_plan is None:
@@ -424,9 +510,11 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
             * (symbol_info["trade_tick_value"] / symbol_info["trade_tick_size"])
             * symbol_info["volume_min"] / equity_now * 100.0
         ) if equity_now > 0 else float("inf")
-        print(
-            f"[{datetime.now()}] Order plan ditolak: risiko lot minimum sekitar "
-            f"{min_lot_risk:.2f}% > batas {config.MAX_ACTUAL_RISK_PERCENT_PER_TRADE:.2f}%."
+        print(f"[{datetime.now()}] Order plan ditolak: structural SL/RR atau risiko lot minimum "
+              f"tidak valid (estimasi risiko minimum {min_lot_risk:.2f}%).")
+        trade_logger.log_system_event(
+            "order_plan_reject",
+            f"structural={structural_reason or 'off'}, structural_sl={structural_sl}, min_lot_risk={min_lot_risk:.2f}%",
         )
         return current_tickets
 
@@ -458,6 +546,29 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
         trade_logger.log_system_event("broker_preflight_reject", broker_reason)
         return current_tickets
 
+    if reversal_positions:
+        for position in reversal_positions:
+            close_result = mt5_connector.close_position(position)
+            if not close_result.get("success"):
+                detail = f"ticket={position.ticket}: {close_result.get('error', 'unknown error')}"
+                trade_logger.log_system_event("reversal_close_failed", detail)
+                print_status(f"Reversal dibatalkan karena penutupan posisi gagal: {detail}")
+                return current_tickets
+            trade_logger.log_system_event(
+                "reversal_position_closed",
+                f"ticket={position.ticket}, close_price={close_result.get('price')}",
+            )
+
+        refreshed_positions = mt5_connector.get_open_positions(config.SYMBOL)
+        remaining_tickets = {int(pos.ticket) for pos in refreshed_positions}
+        not_closed = [int(pos.ticket) for pos in reversal_positions if int(pos.ticket) in remaining_tickets]
+        if not_closed:
+            detail = f"ticket masih terbuka setelah close: {not_closed}"
+            trade_logger.log_system_event("reversal_close_unconfirmed", detail)
+            print_status(f"Reversal dibatalkan: {detail}")
+            return current_tickets
+        print_status("Posisi lama sudah tertutup dan terkonfirmasi; mengirim order arah baru.")
+
     result = mt5_connector.send_market_order(
         symbol=config.SYMBOL,
         order_type=signal_result.signal,
@@ -471,7 +582,7 @@ def run_cycle(equity_start_of_day: float, previous_position_tickets: set) -> set
         runtime_guard.record_order_result(True)
         print(f"[{datetime.now()}] Order berhasil: {result}")
         entry_time = datetime.now().isoformat(timespec="seconds")
-        features = ai_trader.extract_features(df_h1, df_m15, signal_result, spread_points=spread_points)
+        features = signal_features
 
         # Dapatkan ticket posisi dari deal API terlebih dahulu untuk kasus scalping
         # posisi yang langsung tertutup sebelum bisa terdeteksi lewat open positions.
@@ -571,9 +682,23 @@ def main() -> None:
     notifier.notify_bot_started()
 
     account = mt5_connector.get_account_info()
-    equity_now = account["equity"] if account else 0.0
+    if account is None or float(account.get("equity", 0.0) or 0.0) <= 0:
+        message = "Info akun/equity belum tersedia; engine tidak dimulai agar baseline risiko tidak salah."
+        print(message)
+        trade_logger.log_system_event("error", message)
+        mt5_connector.disconnect()
+        instance_lock.release()
+        return
+    reset, reset_reason = runtime_guard.ensure_account_state(account)
+    if reset:
+        print(f"State risiko siap: {reset_reason}.")
+        trade_logger.log_system_event("risk_state_initialized", reset_reason)
+    equity_now = account["equity"]
     equity_start_of_day = runtime_guard.get_daily_start_equity(equity_now)
-    current_open_tickets = {p.ticket for p in mt5_connector.get_open_positions(config.SYMBOL)}
+    current_open_tickets = {
+        position.ticket for position in mt5_connector.get_open_positions(config.SYMBOL)
+        if int(getattr(position, "magic", 0) or 0) == config.MT5_MAGIC
+    }
     open_tickets = current_open_tickets | runtime_guard.get_tracked_tickets()
 
     try:

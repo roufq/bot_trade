@@ -17,7 +17,7 @@ from docx.shared import Cm, Pt, RGBColor
 
 ROOT = Path(__file__).resolve().parent
 SOURCE = ROOT / "PROJECT_DOCUMENTATION.md"
-OUTPUT = ROOT / "Panduan_AI_Trading_Bot_untuk_Pemula_v1.3.0.docx"
+OUTPUT = ROOT / "Panduan_AI_Trading_Bot_untuk_Pemula_v1.4.3.docx"
 
 
 def set_cell_shading(cell, color: str) -> None:
@@ -132,7 +132,7 @@ def export() -> Path:
     document.add_heading("Panduan Lengkap\nAI Trading Bot untuk Pemula", 0)
     subtitle = document.add_paragraph()
     subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    subtitle.add_run("Versi Desktop 1.3.0").bold = True
+    subtitle.add_run("Versi Desktop 1.4.3").bold = True
     subtitle.add_run("\nPenjelasan sederhana dari dasar sampai seluruh pengaturan")
     document.add_paragraph()
     notice = document.add_paragraph()
@@ -203,7 +203,7 @@ def export() -> Path:
     # Metadata inti dokumen.
     properties = document.core_properties
     properties.title = "Panduan Lengkap AI Trading Bot untuk Pemula"
-    properties.subject = "AI Trading Desktop v1.3.0"
+    properties.subject = "AI Trading Desktop v1.4.3"
     properties.author = "AI Trading Project"
     properties.keywords = "MetaTrader 5, AI trading, risk management, machine learning"
 

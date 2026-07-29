@@ -7,6 +7,21 @@ from datetime import datetime, timedelta
 import config
 
 
+def _default_state() -> dict:
+    return {
+        "state_version": 2,
+        "account_key": "",
+        "equity_peak": 0.0,
+        "week_key": "",
+        "week_start_equity": 0.0,
+        "day_key": "",
+        "day_start_equity": 0.0,
+        "open_tickets": [],
+        "order_errors": 0,
+        "order_blocked_until": "",
+    }
+
+
 class SingleInstanceLock:
     def __init__(self, path: str = config.INSTANCE_LOCK_FILE):
         self.path = path
@@ -58,10 +73,7 @@ class SingleInstanceLock:
 
 
 def load_state() -> dict:
-    default = {
-        "equity_peak": 0.0, "week_key": "", "week_start_equity": 0.0,
-        "day_key": "", "day_start_equity": 0.0,
-    }
+    default = _default_state()
     if not os.path.exists(config.RUNTIME_STATE_FILE):
         return default
     try:
@@ -77,6 +89,50 @@ def save_state(state: dict) -> None:
     with open(temporary, "w", encoding="utf-8") as handle:
         json.dump(state, handle, indent=2, sort_keys=True)
     os.replace(temporary, config.RUNTIME_STATE_FILE)
+
+
+def _account_key(account: dict) -> str:
+    """Identitas non-rahasia agar state risiko tidak tercampur antar akun."""
+    login = str(account.get("login", "") or "").strip()
+    server = str(
+        account.get("server", "") or config.MT5_SERVER
+        or account.get("company", "") or "unknown-server"
+    ).strip().lower()
+    return f"{server}|{login}" if login else ""
+
+
+def ensure_account_state(account: dict, now: datetime | None = None) -> tuple[bool, str]:
+    """Inisialisasi/migrasi baseline saat first-run atau akun MT5 berubah."""
+    now = now or datetime.now()
+    key = _account_key(account)
+    equity = float(account.get("equity", 0.0) or 0.0)
+    if not key or equity <= 0:
+        return False, "identitas akun atau equity belum tersedia"
+
+    state_existed = os.path.exists(config.RUNTIME_STATE_FILE)
+    state = load_state()
+    stored_key = str(state.get("account_key", "") or "")
+    if stored_key == key:
+        return False, "state risiko akun sudah sesuai"
+
+    if not state_existed:
+        reason = "first-run akun MT5"
+    elif not stored_key:
+        reason = "migrasi state lama tanpa identitas akun"
+    else:
+        reason = "akun MT5 berbeda dari state tersimpan"
+    week_key = f"{now.isocalendar().year}-W{now.isocalendar().week:02d}"
+    fresh = _default_state()
+    fresh.update({
+        "account_key": key,
+        "equity_peak": equity,
+        "week_key": week_key,
+        "week_start_equity": equity,
+        "day_key": now.date().isoformat(),
+        "day_start_equity": equity,
+    })
+    save_state(fresh)
+    return True, f"{reason}; baseline equity diinisialisasi ke {equity:.2f}"
 
 
 def update_equity_state(equity: float, now: datetime | None = None) -> tuple[dict, float, float]:

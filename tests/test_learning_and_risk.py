@@ -56,6 +56,38 @@ class LearningQualityTests(unittest.TestCase):
 
 
 class RiskSizingTests(unittest.TestCase):
+    def test_structural_sell_stop_uses_confirmed_swing_and_spread_buffer(self):
+        highs = [99, 100, 101, 105, 102, 101, 100, 101, 100]
+        frame = pd.DataFrame({
+            "time": pd.date_range("2026-01-01", periods=len(highs), freq="min"),
+            "high": highs, "low": [value - 2 for value in highs],
+        })
+        stop, reason = risk_manager.structural_stop_price(
+            frame, "sell", entry_price=103.0, atr_value=1.0,
+            spread_price=0.2, tick_size=0.01,
+        )
+        self.assertEqual(stop, 105.3)
+        self.assertIn("buffer=0.30000", reason)
+
+    def test_plan_rejects_structural_stop_that_makes_reward_risk_too_low(self):
+        plan = risk_manager.build_order_plan(
+            signal="buy", entry_price=100, atr_value=1, equity=1000,
+            contract_size=100, tick_value=1, tick_size=0.01,
+            volume_min=0.01, volume_max=100, volume_step=0.01,
+            risk_percent=0.5, structural_sl_price=98.5,
+        )
+        self.assertIsNone(plan)
+
+    def test_structural_stop_reduces_lot_to_preserve_cash_risk(self):
+        plan = risk_manager.build_order_plan(
+            signal="buy", entry_price=100, atr_value=2, equity=10000,
+            contract_size=100, tick_value=1, tick_size=0.01,
+            volume_min=0.01, volume_max=100, volume_step=0.01,
+            risk_percent=0.5, structural_sl_price=97.5,
+        )
+        self.assertIsNotNone(plan)
+        self.assertLessEqual(plan.risk_amount, 50.0)
+
     def test_rejects_minimum_lot_when_it_exceeds_risk_budget(self):
         plan = risk_manager.build_order_plan(
             signal="buy", entry_price=4000, atr_value=2, equity=100,

@@ -211,7 +211,7 @@ Telegram bersifat opsional. Bot tetap dapat berjalan tanpa Telegram.
 
 ## Alternatif paling mudah: installer desktop
 
-Jika menerima file `AITradingDesktop-Setup-1.3.0.exe`, pengguna tidak perlu
+Jika menerima file `AITradingDesktop-Setup-1.4.3.exe`, pengguna tidak perlu
 memasang Python, Git, virtual environment, atau dependency pada langkah 1--6.
 Pengguna tetap wajib memasang MetaTrader 5.
 
@@ -406,6 +406,12 @@ risiko hanya untuk memaksa order.
 
 Baseline drawdown harian tersimpan di `runtime_state.json` dan tidak ter-reset
 hanya dengan restart. Jangan menghapus state untuk menghindari proteksi.
+
+Pada versi 1.3.1, baseline terikat pada akun MT5. Instalasi pertama, state lama
+tanpa identitas akun, atau login akun berbeda akan diinisialisasi otomatis dari
+equity saat ini. Pesan `State risiko siap` pada log adalah normal. Jika versi
+lebih lama menampilkan drawdown sangat besar segera setelah instalasi, pasang
+1.3.1; user tidak perlu mengedit atau menghapus file secara manual.
 
 ### Menjalankan tanpa aktivasi `.venv`
 

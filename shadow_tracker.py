@@ -1,6 +1,7 @@
 """Catat hasil virtual sinyal AI yang diterima dan ditolak tanpa mengirim order."""
 
 import csv
+import json
 import os
 from datetime import datetime
 
@@ -12,6 +13,7 @@ FIELDS = [
     "signal_time", "signal", "setup", "entry_price", "sl_price", "tp_price",
     "ai_probability", "ai_expected_r", "learner_r", "decision", "status",
     "resolved_time", "result_r",
+    "strategy_source", "features_json",
 ]
 
 
@@ -33,7 +35,8 @@ def _write(rows: list[dict]) -> None:
 
 def record(signal_time, signal: str, setup: str, entry_price: float, atr: float,
            ai_probability: float | None, ai_expected_r: float | None,
-           learner_r: float, decision: str) -> None:
+           learner_r: float, decision: str, strategy_source: str = "",
+           feature_values: dict | None = None) -> None:
     if not entry_price or atr <= 0 or signal not in {"buy", "sell"}:
         return
     timestamp = str(pd.to_datetime(signal_time))
@@ -51,6 +54,8 @@ def record(signal_time, signal: str, setup: str, entry_price: float, atr: float,
         "ai_expected_r": "" if ai_expected_r is None else ai_expected_r,
         "learner_r": learner_r, "decision": decision, "status": "pending",
         "resolved_time": "", "result_r": "",
+        "strategy_source": strategy_source,
+        "features_json": json.dumps(feature_values or {}, separators=(",", ":"), sort_keys=True),
     })
     _write(rows)
 

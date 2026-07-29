@@ -102,13 +102,13 @@ Python tidak diperlukan pada komputer tujuan jika memakai EXE hasil build.
 Untuk pengguna awam, distribusikan installer berikut, bukan folder source:
 
 ```text
-installer_output\AITradingDesktop-Setup-1.3.0.exe
+installer_output\AITradingDesktop-Setup-1.4.3.exe
 ```
 
 Langkah pengguna:
 
 1. Tutup versi aplikasi yang lama jika sedang berjalan.
-2. Jalankan `AITradingDesktop-Setup-1.3.0.exe`.
+2. Jalankan `AITradingDesktop-Setup-1.4.3.exe`.
 3. Ikuti wizard dan pilih shortcut Desktop bila diinginkan.
 4. Buka **AI Trading Desktop** dari Start Menu atau Desktop.
 5. Isi tab **Konfigurasi**.
@@ -212,6 +212,12 @@ Menutup GUI ketika engine aktif akan meminta konfirmasi.
 - Lihat tab Log.
 - Pastikan tidak ada `main.py` atau EXE lain yang masih menjalankan engine.
 - Periksa MT5, login, simbol, dan Algo Trading.
+
+### First-run langsung diblokir drawdown besar
+
+Gunakan installer 1.3.1 atau lebih baru. State risiko sekarang otomatis terikat
+pada login/server MT5 dan baseline akun baru dibuat dari equity saat startup.
+Jangan meminta user pemula menghapus `runtime_state.json` secara manual.
 
 ### Tes MT5 gagal
 

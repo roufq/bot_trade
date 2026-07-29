@@ -23,6 +23,10 @@ TRADE_FIELDS = [
     "ai_expected_r", "learner_expected_r",
     "strategy_source", "strategy_a_signal", "strategy_b_signal",
     "fvg_timeframe", "fvg_lower", "fvg_upper",
+    "market_structure_score", "liquidity_score", "snr_score",
+    "order_block_score", "supply_demand_score", "displacement_score",
+    "premium_discount_score", "candlestick_score", "volume_score", "session_score",
+    "signal_side",
 ]
 
 SYSTEM_FIELDS = ["timestamp", "event", "detail"]
@@ -357,6 +361,17 @@ def log_trade(order_id: str, position_ticket: str | int, signal: str, lot_size: 
         "atr_ratio": feature_values.get("atr_ratio", ""),
         "entry_hour": feature_values.get("entry_hour", ""),
         "weekday": feature_values.get("weekday", ""),
+        "market_structure_score": feature_values.get("market_structure_score", 0.0),
+        "liquidity_score": feature_values.get("liquidity_score", 0.0),
+        "snr_score": feature_values.get("snr_score", 0.0),
+        "order_block_score": feature_values.get("order_block_score", 0.0),
+        "supply_demand_score": feature_values.get("supply_demand_score", 0.0),
+        "displacement_score": feature_values.get("displacement_score", 0.0),
+        "premium_discount_score": feature_values.get("premium_discount_score", 0.0),
+        "candlestick_score": feature_values.get("candlestick_score", 0.0),
+        "volume_score": feature_values.get("volume_score", 0.0),
+        "session_score": feature_values.get("session_score", 0.0),
+        "signal_side": feature_values.get("signal_side", 0.0),
     }
     with open(config.TRADE_LOG_FILE, "a", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=TRADE_FIELDS)

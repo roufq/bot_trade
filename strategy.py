@@ -15,6 +15,7 @@ from typing import Literal, Optional
 import pandas as pd
 
 from indicators import add_all_indicators
+from technical_strategies import TechnicalSignal, evaluate_all as evaluate_technical_modules
 import config
 
 Bias = Literal["buy", "sell", "none"]
@@ -33,6 +34,9 @@ class TradeSignal:
     fvg_timeframe: str = ""
     fvg_lower: Optional[float] = None
     fvg_upper: Optional[float] = None
+    technique_scores: dict[str, float] | None = None
+    technique_signals: dict[str, Signal] | None = None
+    confluence_count: int = 1
 
 
 @dataclass(frozen=True)
@@ -186,9 +190,93 @@ def combine_signals(signal_a: TradeSignal, signal_b: TradeSignal) -> TradeSignal
 
 def risk_multiplier_for(strategy_source: str) -> float:
     """Confluence tidak menggandakan risiko; sinyal solo diperkecil."""
-    if strategy_source in {"A_ONLY", "B_ONLY"}:
+    if "_PLUS_" not in strategy_source and strategy_source not in {"CONFLICT", "NONE"}:
         return config.STRATEGY_SOLO_RISK_MULTIPLIER
     return 1.0
+
+
+def _technical_payload(signals: list[TechnicalSignal], direction: Signal) -> tuple[dict[str, float], dict[str, Signal]]:
+    scores: dict[str, float] = {}
+    directions: dict[str, Signal] = {}
+    for item in signals:
+        directions[item.code] = item.direction
+        if item.code == "L":
+            scores[item.code] = item.score
+        elif item.direction == direction:
+            scores[item.code] = item.score
+        elif item.direction != "none":
+            scores[item.code] = -item.score
+        else:
+            scores[item.code] = 0.0
+    return scores, directions
+
+
+def combine_technical_signals(signals: list[TechnicalSignal], atr_value: Optional[float], entry_price: Optional[float]) -> TradeSignal:
+    """Bentuk setup teknikal hanya dari modul independen yang cukup kuat."""
+    eligible = [item for item in signals if item.direction != "none" and item.score >= config.TECHNICAL_MIN_SIGNAL_SCORE]
+    buy = [item for item in eligible if item.direction == "buy"]
+    sell = [item for item in eligible if item.direction == "sell"]
+    buy_score, sell_score = sum(item.score for item in buy), sum(item.score for item in sell)
+    direction: Signal = "buy" if buy_score > sell_score else "sell" if sell_score > buy_score else "none"
+    aligned = buy if direction == "buy" else sell if direction == "sell" else []
+    opposing_score = sell_score if direction == "buy" else buy_score
+    total_score = buy_score if direction == "buy" else sell_score
+    valid = (
+        direction != "none"
+        and len(aligned) >= config.TECHNICAL_MIN_CONFIRMATIONS
+        and any(item.primary for item in aligned)
+        and total_score >= config.TECHNICAL_MIN_CONFLUENCE_SCORE
+        and opposing_score < config.TECHNICAL_CONFLICT_VETO_SCORE
+    )
+    scores, directions = _technical_payload(signals, direction)
+    if not valid:
+        return TradeSignal(
+            "none",
+            f"Modul teknikal belum confluence: buy={buy_score:.2f}, sell={sell_score:.2f}",
+            strategy_source="NONE", technique_scores=scores, technique_signals=directions,
+            confluence_count=len(aligned),
+        )
+    codes = [item.code for item in aligned]
+    reasons = "; ".join(f"{item.code}:{item.reason}" for item in aligned)
+    return TradeSignal(
+        direction, f"{'_PLUS_'.join(codes)}: {reasons}", atr_value=atr_value,
+        entry_price=entry_price, strategy_source="_PLUS_".join(codes),
+        technique_scores=scores, technique_signals=directions,
+        confluence_count=len(aligned),
+    )
+
+
+def merge_legacy_and_technical(legacy: TradeSignal, technical: TradeSignal) -> TradeSignal:
+    """Pertahankan A/B, tambahkan konfirmasi modular, dan veto konflik kuat."""
+    if legacy.signal == "none":
+        return technical
+    raw_scores = technical.technique_scores or {}
+    directions = technical.technique_signals or {}
+    legacy.technique_scores = {
+        code: (
+            abs(score) if code == "L" or directions.get(code) == legacy.signal
+            else -abs(score) if directions.get(code) not in {None, "none"}
+            else 0.0
+        )
+        for code, score in raw_scores.items()
+    }
+    legacy.technique_signals = technical.technique_signals
+    if technical.signal == "none":
+        return legacy
+    if technical.signal != legacy.signal:
+        return TradeSignal(
+            "none", f"Konflik legacy/teknikal: {legacy.strategy_source}={legacy.signal}, "
+            f"{technical.strategy_source}={technical.signal}", strategy_source="CONFLICT",
+            strategy_a_signal=legacy.strategy_a_signal,
+            strategy_b_signal=legacy.strategy_b_signal,
+            technique_scores=technical.technique_scores,
+            technique_signals=technical.technique_signals,
+            confluence_count=technical.confluence_count,
+        )
+    legacy.strategy_source = f"{legacy.strategy_source}_PLUS_{technical.strategy_source}"
+    legacy.reason = f"{legacy.reason}; konfirmasi {technical.reason}"
+    legacy.confluence_count = max(1, legacy.confluence_count) + technical.confluence_count
+    return legacy
 
 
 def evaluate_hybrid(
@@ -200,7 +288,23 @@ def evaluate_hybrid(
 ) -> TradeSignal:
     signal_a = evaluate(df_a_trend, df_a_entry) if config.STRATEGY_A_ENABLED else TradeSignal("none", "A nonaktif")
     signal_b = evaluate_fvg(df_h1, df_m15, df_m1) if config.STRATEGY_B_ENABLED else TradeSignal("none", "B nonaktif")
-    return combine_signals(signal_a, signal_b)
+    legacy = combine_signals(signal_a, signal_b)
+    if not config.TECHNICAL_MODULES_ENABLED:
+        return legacy
+    technical_signals = [
+        item for item in evaluate_technical_modules(df_h1, df_m1)
+        if getattr(config, f"STRATEGY_{item.code}_ENABLED", True)
+    ]
+    atr_series = add_all_indicators(
+        df_m1, config.EMA_ENTRY_FAST, config.EMA_ENTRY_SLOW,
+        config.RSI_PERIOD, config.ATR_PERIOD,
+    )["atr"].dropna()
+    technical = combine_technical_signals(
+        technical_signals,
+        float(atr_series.iloc[-1]) if not atr_series.empty else None,
+        float(df_m1.sort_values("time").iloc[-1]["close"]) if df_m1 is not None and not df_m1.empty else None,
+    )
+    return merge_legacy_and_technical(legacy, technical)
 
 
 def get_trend_bias(df_h1: pd.DataFrame) -> tuple[Bias, str]:

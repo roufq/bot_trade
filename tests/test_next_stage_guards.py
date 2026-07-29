@@ -12,6 +12,7 @@ import requests
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import execution_guard
+import config
 import performance_guard
 import risk_manager
 import runtime_guard
@@ -19,6 +20,13 @@ import news_filter
 
 
 class ExposureTests(unittest.TestCase):
+    def test_rejects_opposite_position_when_hedging_disabled(self):
+        existing = SimpleNamespace(type=1, profit=1.0, price_open=100.0)
+        with patch.object(config, "ALLOW_OPPOSITE_HEDGE", False):
+            allowed, reason = risk_manager.can_open_direction([existing], "buy", 101.0, 1.0)
+        self.assertFalse(allowed)
+        self.assertIn("berlawanan", reason)
+
     def test_rejects_averaging_into_losing_position(self):
         pos = SimpleNamespace(type=0, price_open=100.0, profit=-1.0)
         allowed, reason = risk_manager.can_open_direction([pos], "buy", 101.0, 1.0)

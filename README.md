@@ -23,14 +23,29 @@ menurut arah buy/sell, lalu dibaurkan dengan statistik global agar sampel kecil
 tidak membuat bot terlalu percaya diri. Identitas arah juga tidak menjadi fitur
 model: buy dan sell dinilai setara berdasarkan kondisi chart.
 
-Setelah minimal 50 closed trade valid, `python retrain_model.py` melatih model
+Setelah minimal 200 sampel gabungan yang valid, `python retrain_model.py` melatih model
 klasifikasi probabilitas profit sekaligus model regresi expected `R`. Kandidat
 model hanya dipakai jika lolos evaluasi out-of-sample untuk AUC, Brier score,
 error expected-R, dan actual-R sinyal yang dipilih. Probabilitas tinggi saja
 tidak cukup apabila expected-R di bawah batas.
 
+Versi 1.4.0 menambahkan historical replay dan shadow learning. Tombol
+`Bangun Dataset` menjalankan strategi A-L pada candle tertutup MT5, memberi
+label SL/TP secara konservatif, dan menyimpan snapshot fitur sebelum outcome
+terjadi. `Training AI` otomatis membangun replay bila sampel belum mencapai
+minimum 200, lalu menggabungkan trade nyata, shadow reject resolved, dan replay
+historis dengan deduplikasi per menit/arah. Test out-of-sample wajib berisi
+minimal 40 sampel. Kandidat yang ditolak disimpan sebagai laporan, bukan
+dipaksakan menjadi model aktif.
+
 Baseline drawdown harian disimpan di `runtime_state.json`, sehingga restart bot
 tidak mereset batas kerugian hari tersebut.
+
+Sejak versi 1.3.1, state risiko terikat pada login dan server MT5. First-run,
+migrasi dari versi lama, atau pergantian akun akan membuat baseline baru dari
+equity akun yang sedang aktif. Dengan demikian peak milik akun lain tidak dapat
+memicu drawdown palsu, sementara restart pada akun yang sama tetap mempertahankan
+proteksi drawdown.
 
 Cooldown bersifat progresif untuk timeframe M1: tanpa jeda setelah profit,
 60 detik setelah loss pertama, 3 menit setelah loss kedua, dan 10 menit mulai
@@ -47,12 +62,22 @@ Filter spread memiliki tiga tingkat. Spread sampai 20% ATR diproses normal;
 25--35% ATR menaikkan threshold 0,10 dan menurunkan target risiko 35%.
 Spread di atas 35% ATR atau 50 points tetap ditolak.
 
-## Strategi hybrid A + B
+## Strategi modular A-L
 
-Engine memakai dua sumber sinyal yang tetap dapat diaudit secara terpisah:
+Engine memakai sumber sinyal yang dapat diaudit dan dinonaktifkan secara terpisah:
 
 - **A**: EMA, RSI, ATR, crossover, continuation, dan momentum yang sudah ada.
 - **B**: FVG dari candle tertutup H1/M15 dengan rejection pada candle tertutup M1.
+- **C**: market structure (HH/HL/LH/LL, BOS, dan CHoCH).
+- **D**: buy-side/sell-side liquidity sweep dan reclaim.
+- **E**: support/resistance, rejection, breakout, dan breakdown.
+- **F**: mitigasi bullish/bearish order block.
+- **G**: retest supply/demand setelah departure kuat.
+- **H**: displacement berdasarkan body/range dan ATR.
+- **I**: lokasi premium/discount dalam dealing range.
+- **J**: engulfing dan rejection candlestick.
+- **K**: ekspansi tick-volume.
+- **L**: konteks active session; modul ini tidak membuka posisi sendiri.
 
 Jika hanya A atau hanya B yang valid dan strategi lain netral, entry tetap boleh
 dilakukan dengan pengali risiko solo (default 0,50). Jika A dan B searah, sumber
@@ -61,6 +86,13 @@ dan B berlawanan, entry dibatalkan. Setiap entry mencatat `strategy_source`,
 sinyal A/B, timeframe FVG, dan batas zona agar performa `A_ONLY`, `B_ONLY`, dan
 `A_PLUS_B` dapat dibandingkan. FVG yang telah terisi penuh atau melewati umur
 maksimum tidak digunakan kembali.
+
+Strategi C-L menghasilkan arah dan skor sendiri. Entry modular membutuhkan
+minimal dua modul searah, skor gabungan minimum, dan sedikitnya satu setup utama
+dari C-G. H/I/J/K hanya dapat menjadi konfirmasi. Konflik kuat membatalkan entry,
+bukan dirata-ratakan. Skor setiap teknik disimpan di `trade_log.csv` dan menjadi
+fitur model berikutnya; model lama tetap memakai kontrak fitur yang tersimpan
+di bundle agar upgrade tidak merusak inferensi.
 
 Setiap setup valid juga dicatat secara virtual ke `shadow_signal_log.csv`, baik
 yang diterima maupun ditolak AI. Hasil SL/TP virtual ini memungkinkan evaluasi
@@ -88,7 +120,7 @@ menjalankan aplikasi desktop. Panduan source dan build EXE tersedia di
 [DESKTOP_SETUP.md](DESKTOP_SETUP.md).
 
 Paket untuk komputer tanpa Python dibuat sebagai
-`installer_output/AITradingDesktop-Setup-1.3.0.exe`. MetaTrader 5 tetap wajib
+`installer_output/AITradingDesktop-Setup-1.4.3.exe`. MetaTrader 5 tetap wajib
 terpasang dan login.
 
 ## Konfigurasi
@@ -100,14 +132,14 @@ volatilitas, break-even, trailing stop, serta jam trading. Semua nilai divalidas
 sebelum disimpan. Preset maupun konfigurasi manual tidak menjamin profit; proteksi
 risiko internal tetap aktif.
 
-Versi 1.3.0 memakai satu **Folder data terpadu** untuk engine source dan
+Versi 1.3.1 memakai satu **Folder data terpadu** untuk engine source dan
 desktop. Tombol **Import CSV Pengalaman** menggabungkan entry, closed trade, dan
 shadow signal berdasarkan ticket tanpa menggandakan pengalaman. Tombol
 **Export CSV Pengalaman** membuat salinan portabel tanpa password MT5, token
 Telegram, atau konfigurasi rahasia. Backup dibuat sebelum import memperbarui
 file tujuan.
 
-Versi 1.3.0 juga menyediakan pengaturan jarak momentum dan tambahan threshold
+Versi 1.3.1 juga menyediakan pengaturan jarak momentum dan tambahan threshold
 probe/spread. Default mode aktif lebih longgar: threshold dasar 0,45 menjadi
 sekitar 0,48 ketika probe dan spread tinggi aktif, sementara target risiko tetap
 diperkecil selama performa rolling melemah.
@@ -148,6 +180,7 @@ rekonsiliasi ticket setelah restart.
 | `mt5_connector.py` | Komunikasi ke MT5 (hanya jalan di Windows) |
 | `indicators.py` | Perhitungan EMA, RSI, ATR |
 | `strategy.py` | Logika sinyal entry sesuai timeframe konfigurasi |
+| `technical_strategies.py` | Detector independen market structure, liquidity, SNR, OB, supply/demand, displacement, premium/discount, candle, volume, dan session |
 | `risk_manager.py` | Position sizing, SL/TP, cek drawdown harian |
 | `trade_logger.py` | Logging ke `trade_log.csv` dan `system_log.csv` |
 | `notifier.py` | Notifikasi Telegram |
